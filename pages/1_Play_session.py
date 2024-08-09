@@ -7,7 +7,7 @@ if "players" not in st.session_state:
     st.stop()
 
 # Initialize or load the game session in session state
-if "game_session" not in st.session_state or st.session_state["game_session"] is None:  # noqa E501
+if "game_session" not in st.session_state:  # noqa E501
 
     players = PlayerList.parse_raw(st.session_state["players"])
 
@@ -39,7 +39,7 @@ else:
 
     # Add end session button to sidebar
     if st.sidebar.button("End Session"):
-        st.session_state["game_session"] = None
+        del st.session_state["game_session"]
         st.success("Game session ended!")
         st.rerun()
 
