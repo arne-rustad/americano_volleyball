@@ -19,6 +19,10 @@ class PlayerList(BaseModel):
     next_id: int = Field(default=1)
 
     def add_player(self, name: str) -> Player:
+        # Check if name is empty
+        if not name:
+            raise ValueError("Player name cannot be empty")
+
         # Check if player already exists
         for player in self.players:
             if player.name == name:

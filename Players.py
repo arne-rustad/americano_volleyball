@@ -1,16 +1,19 @@
 import os
 import streamlit as st
 from americano.players import PlayerList
+from americano.sessions import GameSession
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-def update_player_session_state(new_state):
-    if "game_session" in st.session_state:
-        st.session_state["game_session"].players = new_state
-    else:
-        st.session_state["players"] = new_state
+def update_player_session_state(players):
+    st.session_state["players"] = players.model_dump_json()
+    game_session_state = st.session_state.get("game_session")
+    if game_session_state is not None:
+        game_session = GameSession.model_validate_json(game_session_state)
+        game_session.players = players
+        st.session_state["game_session"] = game_session.model_dump_json()
 
 
 if os.getenv("SAVED_PLAYERS"):
@@ -23,10 +26,10 @@ st.title("Americano Volleyball app")
 
 # Initialize or load the player list in session state.
 # Use from game_session if game_session is active, else from players.
-if "game_session" in st.session_state:
-    PlayerList.model_validate_json(st.session_state["game_session"].players)
+if st.session_state.get("game_session") is not None:
+    players = GameSession.model_validate_json(st.session_state["game_session"]).players  # noqa E501
 else:
-    if "players" not in st.session_state:
+    if st.session_state.get("players") is None:
         st.session_state["players"] = PlayerList().model_dump_json()
     players = PlayerList.model_validate_json(st.session_state["players"])
 
@@ -46,7 +49,7 @@ if SAVED_PLAYERS:
         else:
             if st.sidebar.button(f"Load {player_name}"):
                 players.add_player(player_name)
-                update_player_session_state(players.model_dump_json())
+                update_player_session_state(players)
                 st.success(f"Player {player_name} loaded!")
                 st.rerun()
 
@@ -57,7 +60,7 @@ if SAVED_PLAYERS:
             for player_name in SAVED_PLAYERS:
                 if player_name not in players.get_names():
                     players.add_player(player_name)
-            update_player_session_state(players.model_dump_json())
+            update_player_session_state(players)
             st.rerun()
         st.sidebar.divider()
     else:
@@ -69,7 +72,7 @@ new_player_name = st.text_input("Add a new player")
 if st.button("Add Player"):
     try:
         players.add_player(new_player_name)
-        update_player_session_state(players.model_dump_json())
+        update_player_session_state(players)
         st.success(f"Player {new_player_name} added!")
     except ValueError as e:
         st.error(e)
@@ -112,7 +115,7 @@ else:
     if st.button("Remove Player"):
         player = players.remove_player_by_name(remove_player_name)  # noqa E501
         if player:
-            update_player_session_state(players.model_dump_json())
+            update_player_session_state(players)
             st.success(f"Player {remove_player_name} removed!")
             st.rerun()
         else:
@@ -128,6 +131,6 @@ if player_name:
     if st.button("Change Score"):
         player.score = new_score
         player.games_played = new_games_played
-        update_player_session_state(players.model_dump_json())
+        update_player_session_state(players)
         st.success(f"Score of {player_name} changed to {new_score}!")
         st.rerun()
