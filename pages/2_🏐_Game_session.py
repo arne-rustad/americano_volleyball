@@ -13,15 +13,13 @@ if st.session_state.get("game_session_defaults") is None:
 else:
     game_session_defaults = st.session_state["game_session_defaults"]
 
-
-if st.session_state.get("players") is None:
-    st.write("You must first add players")
-    st.stop()
-
 # Initialize or load the game session in session state
 if st.session_state.get("game_session") is None:  # noqa E501
 
     players = PlayerList.model_validate_json(st.session_state["players"])
+    if len(players.players) == 0:
+        st.write("You must first add players before you can start a game session.")
+        st.stop()
 
     # Write current players
     st.write(f"**Current players:** {', '.join([player.name for player in players.players])}")  # noqa E501
@@ -51,6 +49,11 @@ if st.session_state.get("game_session") is None:  # noqa E501
 
     # Create a new game session if button pressed
     if st.button("Start Game Session"):
+        total_players_this_session = sum(n_court_players) * 2
+        if total_players_this_session > len(players.players):
+            st.error(f"You have chosen a session that requires {total_players_this_session} players, but you only have {len(players.players)} players. Please add more players or set up a different game session.")  # noqa E501
+            st.stop()
+
         game_session = GameSession(
             n_courts=n_courts,
             n_game_points=n_game_points,
