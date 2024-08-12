@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.header("Americano App for Volleyball🏐")
+st.page_title("Americano App for Volleyball🏐")
 
 intro = """\
 This app was created for a volleyball tournament inspired by the padel game \
