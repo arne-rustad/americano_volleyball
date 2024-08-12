@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+st.set_page_config(layout="wide")
+
 
 def update_player_session_state(players):
     st.session_state["players"] = players.model_dump_json()
@@ -22,7 +24,8 @@ if os.getenv("SAVED_PLAYERS"):
 else:
     SAVED_PLAYERS = []
 
-st.title("Americano Volleyball app")
+st.title("Player management and leaderboard")
+main, sidebar = st.columns([2, 1])
 
 # Initialize or load the player list in session state.
 # Use from game_session if game_session is active, else from players.
@@ -67,15 +70,17 @@ if SAVED_PLAYERS:
         st.sidebar.write("All saved players already loaded!")
         st.sidebar.divider()
 
-# Add Player
-new_player_name = st.text_input("Add a new player")
-if st.button("Add Player"):
-    try:
-        players.add_player(new_player_name)
-        update_player_session_state(players)
-        st.success(f"Player {new_player_name} added!")
-    except ValueError as e:
-        st.error(e)
+with sidebar:
+    # Add Player
+    st.header("")
+    new_player_name = st.text_input("Add a new player")
+    if st.button("Add Player"):
+        try:
+            players.add_player(new_player_name)
+            update_player_session_state(players)
+            st.success(f"Player {new_player_name} added!")
+        except ValueError as e:
+            st.error(e)
 
 # Reset button in sidebar
 if st.sidebar.button("Reset"):
@@ -93,44 +98,52 @@ if reset_confirmation:
     if st.sidebar.button("No"):
         st.rerun()
 
-
-# Display players based on pandas dataframe
-st.header("List of players:")
-if players.players:
-    st.dataframe(
-        players.to_pandas(),
-        width=1000,
-        height=1000
+with main:
+    # Display players based on pandas dataframe
+    st.header("Players:")
+    df_players = players.to_pandas()
+    df_players.rename(
+        columns={"id": "ID", "name": "Name", "score": "Score", "games_played": "Games Played"},  # noqa E501
+        inplace=True
     )
-else:
-    st.write("No players added yet")
-    st.stop()
+    if players.players:
+        st.dataframe(
+            df_players,
+            width=1000,
+            height=int(35.2*(len(players.players)+1))
+        )
+    else:
+        st.write("No players added yet")
+        st.stop()
 
-if "game_session" in st.session_state:
-    st.write("Game session is active. End the session to remove players.")
-else:
-    # Remove player by name
-    remove_player_name = st.selectbox("Select player to remove", players.get_names())  # noqa E501
+with sidebar:
+    if "game_session" in st.session_state:
+        st.write("Game session is active. End the session to remove players.")
+    else:
+        # Remove player by name
+        remove_player_name = st.selectbox("Select player to remove", players.get_names())  # noqa E501
 
-    if st.button("Remove Player"):
-        player = players.remove_player_by_name(remove_player_name)  # noqa E501
-        if player:
+        if st.button("Remove Player"):
+            player = players.remove_player_by_name(remove_player_name)  # noqa E501
+            if player:
+                update_player_session_state(players)
+                st.success(f"Player {remove_player_name} removed!")
+                st.rerun()
+            else:
+                st.error(f"Player {remove_player_name} not found!")
+
+with sidebar:
+    # Change score of player and number of games played
+    st.subheader("Change score and number of games for player:")
+    st.write("Should only be used to make manual corrections for edge cases.")
+    player_name = st.selectbox("Select player", players.get_names())
+    if player_name:
+        player = players.get_player_by_name(player_name)
+        new_score = st.number_input("New score", value=player.score)
+        new_games_played = st.number_input("New games played", value=player.games_played)  # noqa E501
+        if st.button("Change Score"):
+            player.score = new_score
+            player.games_played = new_games_played
             update_player_session_state(players)
-            st.success(f"Player {remove_player_name} removed!")
+            st.success(f"Score of {player_name} changed to {new_score}!")
             st.rerun()
-        else:
-            st.error(f"Player {remove_player_name} not found!")
-
-# Change score of player and number of games played
-st.header("Change score and number of games for player:")
-player_name = st.selectbox("Select player", players.get_names())
-if player_name:
-    player = players.get_player_by_name(player_name)
-    new_score = st.number_input("New score", value=player.score)
-    new_games_played = st.number_input("New games played", value=player.games_played)  # noqa E501
-    if st.button("Change Score"):
-        player.score = new_score
-        player.games_played = new_games_played
-        update_player_session_state(players)
-        st.success(f"Score of {player_name} changed to {new_score}!")
-        st.rerun()
