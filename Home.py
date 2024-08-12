@@ -1,7 +1,5 @@
 import streamlit as st
 
-# with padel emoji 🏸
-# with team emoji / persons 
 st.header("Americano App for Volleyball🏐")
 
 intro = """\
