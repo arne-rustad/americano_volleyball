@@ -18,7 +18,7 @@ if st.session_state.get("game_session") is None:  # noqa E501
 
     players = PlayerList.model_validate_json(st.session_state["players"])
     if len(players.players) == 0:
-        st.write("You must first add players before you can start a game session.")
+        st.write("You must first add players before you can start a game session.")  # noqa E501
         st.stop()
 
     # Write current players
