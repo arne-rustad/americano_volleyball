@@ -1,8 +1,9 @@
 import os
+
 import streamlit as st
-from americano.players import PlayerList
-from americano.sessions import GameSession
 from dotenv import load_dotenv
+
+from americano.players import PlayerList
 
 load_dotenv()
 
@@ -11,11 +12,6 @@ st.set_page_config(layout="wide")
 
 def update_player_session_state(players):
     st.session_state["players"] = players.model_dump_json()
-    game_session_state = st.session_state.get("game_session")
-    if game_session_state is not None:
-        game_session = GameSession.model_validate_json(game_session_state)
-        game_session.players = players
-        st.session_state["game_session"] = game_session.model_dump_json()
 
 
 if os.getenv("SAVED_PLAYERS"):
@@ -27,14 +23,9 @@ else:
 st.title("Player management and leaderboard")
 main, sidebar = st.columns([2, 1])
 
-# Initialize or load the player list in session state.
-# Use from game_session if game_session is active, else from players.
-if st.session_state.get("game_session") is not None:
-    players = GameSession.model_validate_json(st.session_state["game_session"]).players  # noqa E501
-else:
-    if st.session_state.get("players") is None:
-        st.session_state["players"] = PlayerList().model_dump_json()
-    players = PlayerList.model_validate_json(st.session_state["players"])
+if st.session_state.get("players") is None:
+    st.session_state["players"] = PlayerList().model_dump_json()
+players = PlayerList.model_validate_json(st.session_state["players"])
 
 if st.session_state.get("reset_confirmation") is None or st.session_state.get("reset_confirmation") is False:  # noqa E501
     reset_confirmation = False
@@ -46,8 +37,8 @@ else:
 if SAVED_PLAYERS:
     saved_players_loaded = 0
     st.sidebar.header("Saved players:")
-    for i, player_name in enumerate(SAVED_PLAYERS):
-        if player_name in players.get_names():  # noqa E501
+    for player_name in SAVED_PLAYERS:
+        if player_name in players.get_names():
             saved_players_loaded += 1
         else:
             if st.sidebar.button(f"Load {player_name}"):
@@ -124,7 +115,7 @@ with sidebar:
         remove_player_name = st.selectbox("Select player to remove", players.get_names())  # noqa E501
 
         if st.button("Remove Player"):
-            player = players.remove_player_by_name(remove_player_name)  # noqa E501
+            player = players.remove_player_by_name(remove_player_name)
             if player:
                 update_player_session_state(players)
                 st.success(f"Player {remove_player_name} removed!")
