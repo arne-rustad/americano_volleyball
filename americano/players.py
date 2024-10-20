@@ -3,6 +3,8 @@ from typing import List, Optional
 import json
 import pandas as pd
 
+from americano.sessions import CourtSession
+
 
 class Player(BaseModel):
     id: int = Field()
@@ -84,9 +86,17 @@ class PlayerList(BaseModel):
         players_drawn = players_drawn[:n]
         return sorted(players_drawn, key=lambda x: x.score, reverse=True)
 
+    def draw_player_names(self, n: int) -> List[str]:
+        return [player.name for player in self.draw_players(n)]
+
     def print(self):
         for player in self.players:
             player.print()
 
     def to_pandas(self):
         return pd.DataFrame([player.model_dump() for player in self.players])
+
+    def update_player_scores(self, court_sessions: List[CourtSession]):
+        for session in court_sessions:
+            session.add_score_to_players()
+    
