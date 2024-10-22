@@ -1,15 +1,17 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
 import json
-import pandas as pd
+from typing import List, Optional
 
-from americano.sessions import CourtSession
+import pandas as pd
+from pydantic import BaseModel, Field
+
+from americano.models.enums import Gender
 
 
 class Player(BaseModel):
     id: int = Field()
     name: str = Field()
-    score: int = Field(default=0)
+    gender: Optional[Gender] = Field()
+    score: int | float = Field(default=0)
     games_played: int = Field(default=0)
 
     def print(self):
@@ -67,7 +69,7 @@ class PlayerList(BaseModel):
             json.dump([player.dict() for player in self.players], f)
 
     def load_players(self, filename: str):
-        with open(filename, 'r') as f:
+        with open(filename) as f:
             player_data = json.load(f)
         self.players = [Player(**data) for data in player_data]
         self.next_id = max(player.id for player in self.players) + 1
@@ -81,22 +83,9 @@ class PlayerList(BaseModel):
     def get_player_games_played(self):
         return [player.games_played for player in self.players]
 
-    def draw_players(self, n: int) -> List[Player]:
-        players_drawn = sorted(self.players, key=lambda x: x.games_played, reverse=False)  # noqa E501
-        players_drawn = players_drawn[:n]
-        return sorted(players_drawn, key=lambda x: x.score, reverse=True)
-
-    def draw_player_names(self, n: int) -> List[str]:
-        return [player.name for player in self.draw_players(n)]
-
     def print(self):
         for player in self.players:
             player.print()
 
     def to_pandas(self):
         return pd.DataFrame([player.model_dump() for player in self.players])
-
-    def update_player_scores(self, court_sessions: List[CourtSession]):
-        for session in court_sessions:
-            session.add_score_to_players()
-    

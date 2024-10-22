@@ -1,44 +1,11 @@
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, Field
 
-from .players import Player, PlayerList
+from americano.court_session import CourtSession
+from americano.player_manager import PlayerManager
 
-
-class CourtSession(BaseModel):
-    n_players_each_team: int = Field()
-    teamA: List[str] = Field()
-    teamB: List[str] = Field()
-    n_game_points: int = Field()
-    score_team_A: Optional[int] = Field(default=None)
-    score_team_B: Optional[int] = Field(default=None)
-
-    @property
-    def finished(self) -> bool:
-        return self.score_team_A is not None and self.score_team_B is not None
-
-    def add_score(
-        self,
-        score_team_A: Optional[int] = None,
-        score_team_B: Optional[int] = None,
-    ):
-        if score_team_A is not None:
-            self.score_team_A = score_team_A
-        if score_team_B is not None:
-            self.score_team_B = score_team_B
-
-    def add_score_to_players(self, players: PlayerList):
-        assert self.finished
-
-        for player_name in self.teamA:
-            player = players.get_player_by_name(player_name)
-            player.games_played += 1
-            player.score += self.score_team_A
-
-        for player_name in self.teamB:
-            player = players.get_player_by_name(player_name)
-            player.games_played += 1
-            player.score += self.score_team_B
+from .players import PlayerList
 
 
 class GameSession(BaseModel):
@@ -83,12 +50,13 @@ class GameSession(BaseModel):
         )
         self.court_sessions.append(court_session)
 
-    def create_court_sessions(self, n_players_each_team: list, players: PlayerList):  # noqa E501
+    def create_court_sessions(self, n_players_each_team: list[int], players: PlayerList):  # noqa E501
         assert len(n_players_each_team) == self.n_courts
 
         self.court_sessions = []
 
-        drawn_players = players.draw_player_names(
+        player_manager = PlayerManager(player_list=players)
+        drawn_players = player_manager.draw_player_names(
             n=2 * sum(n_players_each_team)
         )
 
