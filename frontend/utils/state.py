@@ -3,7 +3,7 @@ from typing import Optional
 import streamlit as st
 
 from americano.players import PlayerList
-from americano.sessions import GameSession
+from americano.game_session import GameSession
 from frontend.utils.models.defaults import GameSessionDefaults
 from frontend.utils.models.tournament_options import TournamentOptions
 

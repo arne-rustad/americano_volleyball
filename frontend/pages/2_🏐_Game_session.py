@@ -1,7 +1,7 @@
 import streamlit as st
 
 from americano.player_manager import PlayerManager
-from americano.sessions import GameSession
+from americano.game_session import GameSession
 from frontend.config import INFO_ICON, WARNING_ICON
 from frontend.utils.state import (
     delete_game_session_state,
