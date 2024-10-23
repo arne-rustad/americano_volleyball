@@ -7,8 +7,9 @@ class PlayerManager:
     def __init__(self, player_list: PlayerList):
         self.player_list = player_list
 
-    def draw_players(self, n: int, mix_tournament: bool = False) -> list[Player]:  # noqa E501
-
+    def draw_players(
+        self, n: int, mix_tournament: bool = False
+    ) -> list[Player]:
         if n > len(self.player_list.players):
             raise ValueError("Cannot draw more players than available")
         elif n < 0:
@@ -32,8 +33,12 @@ class PlayerManager:
 
         # If mix tournament, return first one man, then one woman, then one man, etc.  # noqa E501
         if mix_tournament:
-            male_players = [p for p in players_drawn if p.gender == Gender.MALE]  # noqa E501
-            female_players = [p for p in players_drawn if p.gender == Gender.FEMALE]  # noqa E501
+            male_players = [
+                p for p in players_drawn if p.gender == Gender.MALE
+            ]
+            female_players = [
+                p for p in players_drawn if p.gender == Gender.FEMALE
+            ]
 
             n_male_to_select = min(n // 2, len(male_players))
             n_female_to_select = min(n // 2, len(female_players))
@@ -45,13 +50,17 @@ class PlayerManager:
                 n_female_to_select += n // 2 - n_male_to_select
             elif n_female_to_select < n // 2:
                 n_male_to_select += n // 2 - n_female_to_select
-            
+
             selected_male_players = male_players[:n_male_to_select]
             selected_female_players = female_players[:n_female_to_select]
 
             # Reorder players by points
-            selected_male_players = sorted(selected_male_players, key=lambda x: x.score, reverse=True)  # noqa E501
-            selected_female_players = sorted(selected_female_players, key=lambda x: x.score, reverse=True)  # noqa E501
+            selected_male_players = sorted(
+                selected_male_players, key=lambda x: x.score, reverse=True
+            )
+            selected_female_players = sorted(
+                selected_female_players, key=lambda x: x.score, reverse=True
+            )
 
             # Merge lists, alternating between male and female
             selected_players = []
@@ -62,19 +71,27 @@ class PlayerManager:
             while len(selected_players) < n:
                 if i % 2 == 0:  # Even index, pick male
                     if male_index < len(selected_male_players):
-                        selected_players.append(selected_male_players[male_index])
+                        selected_players.append(
+                            selected_male_players[male_index]
+                        )
                         male_index += 1
                     elif female_index < len(selected_female_players):
-                        selected_players.append(selected_female_players[female_index])
+                        selected_players.append(
+                            selected_female_players[female_index]
+                        )
                         female_index += 1
                     else:
                         break  # No more players to pick
                 else:  # Odd index, pick female
                     if female_index < len(selected_female_players):
-                        selected_players.append(selected_female_players[female_index])
+                        selected_players.append(
+                            selected_female_players[female_index]
+                        )
                         female_index += 1
                     elif male_index < len(selected_male_players):
-                        selected_players.append(selected_male_players[male_index])
+                        selected_players.append(
+                            selected_male_players[male_index]
+                        )
                         male_index += 1
                     else:
                         break  # No more players to pick
@@ -86,8 +103,13 @@ class PlayerManager:
             players_drawn = players_drawn[:n]
             return sorted(players_drawn, key=lambda x: x.score, reverse=True)
 
-    def draw_player_names(self, n: int) -> list[str]:
-        return [player.name for player in self.draw_players(n=n)]
+    def draw_player_names(
+        self, n: int, mix_tournament: bool = False
+    ) -> list[str]:
+        return [
+            player.name
+            for player in self.draw_players(n=n, mix_tournament=mix_tournament)
+        ]
 
     @classmethod
     def _update_player_score_single_court(

@@ -10,7 +10,7 @@ from americano.models.enums import Gender
 class Player(BaseModel):
     id: int = Field()
     name: str = Field()
-    gender: Optional[Gender] = Field()
+    gender: Optional[Gender] = Field(default=None)
     score: int | float = Field(default=0)
     games_played: int = Field(default=0)
 
@@ -22,7 +22,25 @@ class PlayerList(BaseModel):
     players: List[Player] = Field(default_factory=list)
     next_id: int = Field(default=1)
 
-    def add_player(self, name: str) -> Player:
+    def edit_player(
+        self,
+        player_id: int,
+        new_name: str = None,
+        new_gender: Gender = None,
+        new_score: int | float = None,
+        new_games_played: int = None,
+    ):
+        player = self.get_player_by_id(player_id)
+        if new_name:
+            player.name = new_name
+        if new_gender:
+            player.gender = new_gender
+        if new_score:
+            player.score = new_score
+        if new_games_played:
+            player.games_played = new_games_played
+
+    def add_player(self, name: str, gender: Gender = None) -> Player:
         # Check if name is empty
         if not name:
             raise ValueError("Player name cannot be empty")
@@ -32,13 +50,14 @@ class PlayerList(BaseModel):
             if player.name == name:
                 raise ValueError(f"Player {name} already exists")
 
-        player = Player(id=self.next_id, name=name)
+        player = Player(id=self.next_id, name=name, gender=gender)
         self.players.append(player)
         self.next_id += 1
         return player
 
-    def add_players(self, names: List[str]) -> List[Player]:
-        players = [Player(id=self.next_id + i, name=name) for i, name in enumerate(names)]  # noqa E501
+    def add_players(self, names: List[str], genders: List[Gender] = None) -> List[Player]:  # noqa E501
+        raise NotImplementedError("Not implemented")
+        players = [Player(id=self.next_id + i, name=name, gender=gender) for i, name in enumerate(names)]  # noqa E501
         self.players.extend(players)
         self.next_id += len(names)
         return players
@@ -58,6 +77,12 @@ class PlayerList(BaseModel):
     def get_player_by_name(self, name: str) -> Optional[Player]:
         for player in self.players:
             if player.name == name:
+                return player
+        return None
+    
+    def get_player_by_id(self, player_id: int) -> Optional[Player]:
+        for player in self.players:
+            if player.id == player_id:
                 return player
         return None
 

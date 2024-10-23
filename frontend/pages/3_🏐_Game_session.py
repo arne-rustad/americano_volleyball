@@ -1,17 +1,23 @@
 import streamlit as st
 
-from americano.player_manager import PlayerManager
 from americano.game_session import GameSession
+from americano.player_manager import PlayerManager
 from frontend.config import INFO_ICON, WARNING_ICON
 from frontend.utils.state import (
     delete_game_session_state,
     get_game_session_defaults,
     get_game_session_state,
     get_players_from_state,
+    get_tournament_options,
     update_game_session_defaults,
     update_game_session_state,
     update_players_state,
 )
+
+tournament_options = get_tournament_options()
+if tournament_options is None:
+    st.info("You must first start a tournament.", icon=INFO_ICON)
+    st.stop()
 
 # Initialize or load the game session in session state
 game_session = get_game_session_state()
@@ -28,9 +34,7 @@ if game_session is None:
         st.stop()
 
     # Write current players
-    st.write(
-        f"**Current players:** {', '.join([player.name for player in players.players])}"  # noqa E501
-    )
+    st.write(f"**Number of players available:** {len(players.players)}")
 
     # Take the number of courts and game points as input
     n_courts = st.number_input(
@@ -97,7 +101,9 @@ if game_session is None:
             n_courts=n_courts, n_game_points=n_game_points, players=players
         )
         game_session.create_court_sessions(
-            n_players_each_team=n_court_players, players=players
+            n_players_each_team=n_court_players,
+            players=players,
+            mix_tournament=tournament_options.mix_tournament,
         )
         update_game_session_state(game_session=game_session)
 
@@ -120,10 +126,16 @@ else:
     st.write(f"**Number of game points:** {game_session.n_game_points}")
 
     # Add end session button to sidebar
-    if st.sidebar.button("Delete Game Session"):
-        delete_game_session_state()
-        st.success("Game session deleted! Player score have NOT been updated.")
-        st.rerun()
+    with st.sidebar:
+        @st.dialog("Are you sure you want to delete the game session?")
+        def delete_game_session_dialog():
+            if st.button("Yes, delete game session"):
+                delete_game_session_state()
+                st.success("Game session deleted! Player score have NOT been updated.")  # noqa E501
+                st.rerun()
+
+        if st.button("Delete Game Session"):
+            delete_game_session_dialog()
 
     # For each court, display the players and score input
 
@@ -134,37 +146,38 @@ else:
 
         court_session = game_session.court_sessions[i]
 
-        col_teamA, col_teamB = st.columns(2)
+        col_teamA, col_score_teamA, col_score_teamB, col_teamB = st.columns([1, 1, 1, 1])  # noqa E501
         label_team_A = f"Score for Team A in Court {i+1}"
         label_team_B = f"Score for Team B in Court {i+1}"
-        
+
         with col_teamA:
-            st.write(
-                f"**Team A:** {', '.join(court_session.teamA)}"
-            )
+            st.write(f"**Team A:** {', '.join(court_session.teamA)}")
+        with col_score_teamA:
             score_team_A = st.number_input(
                 label_team_A,
                 min_value=0,
                 max_value=game_session.n_game_points,
                 value=court_session.score_team_A,
+                placeholder=label_team_A,
+                label_visibility="collapsed",
             )
 
         with col_teamB:
-            st.write(
-                f"**Team B:** {', '.join(court_session.teamB)}"
-            )
-
+            st.write(f"**Team B:** {', '.join(court_session.teamB)}")
+        with col_score_teamB:
             game_session.update_session_score(i, score_team_A=score_team_A)
             score_team_B = st.number_input(
                 label_team_B,
                 min_value=0,
                 max_value=game_session.n_game_points,
                 value=court_session.score_team_B,
+                placeholder=label_team_B,
+                label_visibility="collapsed",
             )
 
         match sum(score is None for score in [score_team_A, score_team_B]):
             case 0:
-                if score_team_A + score_team_B != game_session.n_game_points:  # noqa E501
+                if score_team_A + score_team_B != game_session.n_game_points:
                     st.warning(
                         f"The score for team A ({score_team_A}) and team B ({score_team_B})"  # noqa E501
                         f" does not add up to the decided number of game points ({game_session.n_game_points})",  # noqa E501
@@ -173,26 +186,30 @@ else:
             case 1:
                 needs_to_rerun_due_to_automatic_points_update = True
                 if score_team_A is None:
-                    court_session.score_team_A = game_session.n_game_points - score_team_B  # noqa E501
+                    court_session.score_team_A = (
+                        game_session.n_game_points - score_team_B
+                    )
                 if score_team_B is None:
-                    court_session.score_team_B = game_session.n_game_points - score_team_A  # noqa E501
+                    court_session.score_team_B = (
+                        game_session.n_game_points - score_team_A
+                    )
             case 2:
                 pass
             case _:
                 raise ValueError("This should never happen")
-                  
+
         update_game_session_state(game_session)
         if needs_to_rerun_due_to_automatic_points_update:
             st.rerun()
-
-        
-        
 
     # Update the scores if button pressed
     if game_session.finished and st.button("Finish Session"):
         players = get_players_from_state()
         player_manager = PlayerManager(player_list=players)
-        player_manager.update_player_scores(game_session.court_sessions, resting_points=game_session.n_game_points / 2)  # noqa E501
+        player_manager.update_player_scores(
+            game_session.court_sessions,
+            resting_points=game_session.n_game_points / 2,
+        )
         update_players_state(players)
         delete_game_session_state()
         st.success("Session finished! Player scores updated.")
