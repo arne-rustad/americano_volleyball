@@ -3,29 +3,22 @@ import streamlit as st
 from americano.game_session import GameSession
 from americano.player_manager import PlayerManager
 from frontend.config import INFO_ICON, WARNING_ICON
-from frontend.utils.state import (
-    delete_game_session_state,
-    get_game_session_defaults,
-    get_game_session_state,
-    get_players_from_state,
-    get_tournament_options,
-    update_game_session_defaults,
-    update_game_session_state,
-    update_players_state,
-)
+from frontend.utils.state.get_state import get_state
 
-tournament_options = get_tournament_options()
+state = get_state()
+
+tournament_options = state.get_tournament_options()
 if tournament_options is None:
     st.info("You must first start a tournament.", icon=INFO_ICON)
     st.stop()
 
 # Initialize or load the game session in session state
-game_session = get_game_session_state()
+game_session = state.get_game_session()
 if game_session is None:
     st.title("Start a new game session")
-    game_session_defaults = get_game_session_defaults()
+    game_session_defaults = state.get_defaults()
 
-    players = get_players_from_state()
+    players = state.get_players()
     if len(players.players) == 0:
         st.info(
             "You must first add players before you can start a game session.",
@@ -105,7 +98,7 @@ if game_session is None:
             players=players,
             mix_tournament=tournament_options.mix_tournament,
         )
-        update_game_session_state(game_session=game_session)
+        state.set_game_session(game_session=game_session)
 
         st.success("Game session started!")
 
@@ -113,8 +106,8 @@ if game_session is None:
         game_session_defaults.n_courts = n_courts
         game_session_defaults.n_game_points = n_game_points
         game_session_defaults.n_court_players = n_court_players
-        update_game_session_defaults(
-            game_session_defaults=game_session_defaults
+        state.set_defaults(
+            defaults=game_session_defaults
         )
 
         st.rerun()
@@ -130,7 +123,7 @@ else:
         @st.dialog("Are you sure you want to delete the game session?")
         def delete_game_session_dialog():
             if st.button("Yes, delete game session"):
-                delete_game_session_state()
+                state.delete_game_session()
                 st.success("Game session deleted! Player score have NOT been updated.")  # noqa E501
                 st.rerun()
 
@@ -198,19 +191,19 @@ else:
             case _:
                 raise ValueError("This should never happen")
 
-        update_game_session_state(game_session)
+        state.set_game_session(game_session)
         if needs_to_rerun_due_to_automatic_points_update:
             st.rerun()
 
     # Update the scores if button pressed
     if game_session.finished and st.button("Finish Session"):
-        players = get_players_from_state()
+        players = state.get_players()
         player_manager = PlayerManager(player_list=players)
         player_manager.update_player_scores(
             game_session.court_sessions,
             resting_points=game_session.n_game_points / 2,
         )
-        update_players_state(players)
-        delete_game_session_state()
+        state.set_players(players)
+        state.delete_game_session()
         st.success("Session finished! Player scores updated.")
         st.rerun()

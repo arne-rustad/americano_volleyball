@@ -5,19 +5,16 @@ import yaml
 from americano.models.enums import Gender
 from americano.paths import SAVED_PLAYERS_PATH
 from frontend.config import INFO_ICON
-from frontend.utils.state import (
-    get_players_from_state,
-    get_tournament_options,
-    update_players_state,
-)
+from frontend.utils.state.get_state import get_state
+
+state = get_state()
 
 st.set_page_config(layout="wide")
 
-tournament_options = get_tournament_options()
+tournament_options = state.get_tournament_options()
 if tournament_options is None:
     st.info("You must first start a tournament.", icon=INFO_ICON)
     st.stop()
-
 
 if SAVED_PLAYERS_PATH.exists():
     with open(SAVED_PLAYERS_PATH) as f:
@@ -28,7 +25,7 @@ else:
 st.title("Player management and leaderboard")
 main, sidebar = st.columns([2, 1])
 
-players = get_players_from_state()
+players = state.get_players()
 
 # Display saved players list in sidebar with a button to load them
 if SAVED_PLAYERS:
@@ -48,14 +45,14 @@ if SAVED_PLAYERS:
                         name=player["name"],
                         gender=Gender(player["gender"])
                     )
-                update_players_state(players)
+                state.set_players(players)
                 st.rerun()
             st.sidebar.divider()
 
         for player in favorites_not_loaded:
             if st.sidebar.button(f"Load {player['name']}"):
                 players.add_player(name=player["name"], gender=Gender(player["gender"]))  # noqa E501
-                update_players_state(players)
+                state.set_players(players)
                 st.success(f"Player {player['name']} loaded!")
                 st.rerun()
         st.sidebar.divider()
@@ -79,7 +76,7 @@ with sidebar:
                     name=new_player_name,
                     gender=Gender(new_player_gender.lower()),
                 )
-                update_players_state(players)
+                state.set_players(players)
                 st.success(f"Player {new_player_name} added!")
             except ValueError as e:
                 st.error(e)
@@ -128,7 +125,7 @@ with sidebar:
         if st.button("Remove Player"):
             player = players.remove_player_by_name(remove_player_name)
             if player:
-                update_players_state(players)
+                state.set_players(players)
                 st.success(f"Player {remove_player_name} removed!")
                 st.rerun()
             else:
@@ -168,7 +165,7 @@ with sidebar:
                         new_gender=Gender(new_gender.lower()),
                         new_name=new_name,
                     )
-                    update_players_state(players)
+                    state.set_players(players)
                     st.success(f"Player details updated for **{player_name}**")
                     if new_score != old_score:  
                         st.success(f"Score changed to **{new_score}** from {old_score}")  # noqa E501
