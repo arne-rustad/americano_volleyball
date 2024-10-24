@@ -1,7 +1,7 @@
 import streamlit as st
 
 from frontend.utils.models.tournament_options import TournamentOptions
-from frontend.utils.state.get_state import get_state
+from frontend.state.get_state import get_state
 
 state = get_state()
 

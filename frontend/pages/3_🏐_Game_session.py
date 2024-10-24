@@ -3,7 +3,7 @@ import streamlit as st
 from americano.game_session import GameSession
 from americano.player_manager import PlayerManager
 from frontend.config import INFO_ICON, WARNING_ICON
-from frontend.utils.state.get_state import get_state
+from frontend.state.get_state import get_state
 
 state = get_state()
 

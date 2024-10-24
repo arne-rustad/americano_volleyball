@@ -1,5 +1,5 @@
-from frontend.utils.state.base import State
-from frontend.utils.state.streamlit import StreamlitState
+from frontend.state.base import State
+from frontend.state.streamlit import StreamlitState
 
 
 def get_state() -> State:

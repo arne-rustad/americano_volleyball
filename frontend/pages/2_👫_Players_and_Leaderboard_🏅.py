@@ -5,7 +5,7 @@ import yaml
 from americano.models.enums import Gender
 from americano.paths import SAVED_PLAYERS_PATH
 from frontend.config import INFO_ICON
-from frontend.utils.state.get_state import get_state
+from frontend.state.get_state import get_state
 
 state = get_state()
 
