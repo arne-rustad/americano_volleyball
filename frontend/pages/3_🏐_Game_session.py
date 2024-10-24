@@ -5,7 +5,7 @@ from americano.player_manager import PlayerManager
 from frontend.config import INFO_ICON, WARNING_ICON
 from frontend.state.get_state import get_state
 
-state = get_state()
+state = get_state(user_id="osvb_hostslepp")
 
 tournament_options = state.get_tournament_options()
 if tournament_options is None:

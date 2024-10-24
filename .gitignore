@@ -165,4 +165,5 @@ cython_debug/
 saved_players.yaml
 
 .streamlit/secrets.toml
+.streamlit/secrets.toml.copy
 americano-volleyball-app-firebase-adminsdk.json

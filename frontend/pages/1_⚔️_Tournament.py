@@ -3,7 +3,7 @@ import streamlit as st
 from frontend.utils.models.tournament_options import TournamentOptions
 from frontend.state.get_state import get_state
 
-state = get_state()
+state = get_state(user_id="osvb_hostslepp")
 
 st.title("⚔️ Tournament")
 

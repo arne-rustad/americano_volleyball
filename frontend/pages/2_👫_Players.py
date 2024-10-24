@@ -7,7 +7,7 @@ from americano.paths import SAVED_PLAYERS_PATH
 from frontend.config import INFO_ICON
 from frontend.state.get_state import get_state
 
-state = get_state()
+state = get_state(user_id="osvb_hostslepp")
 
 st.set_page_config(layout="wide")
 
@@ -26,6 +26,7 @@ st.title("Player management and leaderboard")
 main, sidebar = st.columns([2, 1])
 
 players = state.get_players()
+print(players)
 
 # Display saved players list in sidebar with a button to load them
 if SAVED_PLAYERS:
@@ -52,6 +53,7 @@ if SAVED_PLAYERS:
         for player in favorites_not_loaded:
             if st.sidebar.button(f"Load {player['name']}"):
                 players.add_player(name=player["name"], gender=Gender(player["gender"]))  # noqa E501
+                print("new", players)
                 state.set_players(players)
                 st.success(f"Player {player['name']} loaded!")
                 st.rerun()
@@ -98,7 +100,7 @@ with main:
     )
     if players.players:
         if tournament_options.mix_tournament:
-                df_players["Gender"] = df_players["Gender"].apply(lambda x: x.value.capitalize())  # noqa E501
+                df_players["Gender"] = df_players["Gender"].apply(lambda x: x.capitalize())  # noqa E501
         else:
             df_players.drop(columns=["Gender"], inplace=True)
 

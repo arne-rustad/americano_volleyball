@@ -16,6 +16,10 @@ class Player(BaseModel):
 
     def print(self):
         print(f"Name: {self.name}, Score: {self.score}, Games Played: {self.games_played}")  # noqa E501
+    
+    model_config = {
+        'use_enum_values': True
+    }
 
 
 class PlayerList(BaseModel):

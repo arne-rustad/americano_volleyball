@@ -4,9 +4,9 @@ import streamlit as st
 
 from americano.game_session import GameSession
 from americano.players import PlayerList
+from frontend.state.base import State
 from frontend.utils.models.defaults import GameSessionDefaults
 from frontend.utils.models.tournament_options import TournamentOptions
-from frontend.state.base import State
 
 
 class StreamlitState(State):
