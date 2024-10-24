@@ -34,10 +34,10 @@ class PlayerManager:
         # If mix tournament, return first one man, then one woman, then one man, etc.  # noqa E501
         if mix_tournament:
             male_players = [
-                p for p in players_drawn if p.gender == Gender.MALE
+                p for p in players_drawn if p.gender == Gender.MALE.value
             ]
             female_players = [
-                p for p in players_drawn if p.gender == Gender.FEMALE
+                p for p in players_drawn if p.gender == Gender.FEMALE.value
             ]
 
             n_male_to_select = min(n // 2, len(male_players))

@@ -23,10 +23,9 @@ else:
     SAVED_PLAYERS = []
 
 st.title("Player management and leaderboard")
-main, sidebar = st.columns([2, 1])
+sidebar, main = st.columns([1, 2])
 
 players = state.get_players()
-print(players)
 
 # Display saved players list in sidebar with a button to load them
 if SAVED_PLAYERS:
@@ -53,7 +52,6 @@ if SAVED_PLAYERS:
         for player in favorites_not_loaded:
             if st.sidebar.button(f"Load {player['name']}"):
                 players.add_player(name=player["name"], gender=Gender(player["gender"]))  # noqa E501
-                print("new", players)
                 state.set_players(players)
                 st.success(f"Player {player['name']} loaded!")
                 st.rerun()
@@ -65,7 +63,7 @@ if SAVED_PLAYERS:
 with sidebar:
     # Add Player
     st.header("Add player")
-    with st.form(key="add_player"):
+    with st.form(key="add_player", clear_on_submit=True):
         new_player_name = st.text_input("Player name")
         new_player_gender = st.radio(
             label="Select player",
@@ -76,7 +74,7 @@ with sidebar:
             try:
                 players.add_player(
                     name=new_player_name,
-                    gender=Gender(new_player_gender.lower()),
+                    gender=new_player_gender.lower(),
                 )
                 state.set_players(players)
                 st.success(f"Player {new_player_name} added!")
@@ -104,7 +102,6 @@ with main:
         else:
             df_players.drop(columns=["Gender"], inplace=True)
 
-        st.write("**💡Hint:** Click on a column header to sort by that column. Create a sorted leaderboard by clicking on the 'Score' column header.")  # noqa E501
         st.dataframe(
             df_players,
             width=1000,
@@ -116,23 +113,39 @@ with main:
         st.stop()
 
 with sidebar:
+    st.header("Remove player")
     if "game_session" in st.session_state:
         st.write("Game session is active. End the session to remove players.")
     else:
+        confirm_before_removing_player = st.checkbox("Confirm before removing player", value=True)  # noqa E501
         # Remove player by name
         remove_player_name = st.selectbox(
             "Select player to remove", players.get_names()
         )
 
         if st.button("Remove Player"):
-            player = players.remove_player_by_name(remove_player_name)
-            if player:
-                state.set_players(players)
-                st.success(f"Player {remove_player_name} removed!")
-                st.rerun()
+            @st.dialog("Are you sure you want to remove this player?")
+            def remove_player_dialog():
+                if st.button("Yes, remove player."):
+                    player = players.remove_player_by_name(remove_player_name)
+                    if player:
+                        state.set_players(players)
+                        st.success(f"Player {remove_player_name} removed!")
+                        st.rerun()
+                    else:
+                        st.error(f"Player {remove_player_name} not found!")
+            if confirm_before_removing_player:
+                remove_player_dialog()
             else:
-                st.error(f"Player {remove_player_name} not found!")
+                player = players.remove_player_by_name(remove_player_name)
+                if player:
+                    state.set_players(players)
+                    st.success(f"Player {remove_player_name} removed!")
+                    st.rerun()
+                else:
+                    st.error(f"Player {remove_player_name} not found!")
 
+    st.header("Other actions")
     # Change score of player and number of games played
     with st.expander("Make manual adjustments"):
         st.info(
@@ -152,7 +165,7 @@ with sidebar:
                 new_gender = st.radio(
                     label="New gender",
                     options=["Male", "Female"],
-                    index=0 if player.gender == Gender.MALE else 1,
+                    index=0 if player.gender == Gender.MALE.value else 1,
                 )
                 new_name = st.text_input("New name", value=player.name)
                 if st.form_submit_button("Update Player Details"):
@@ -164,7 +177,7 @@ with sidebar:
                         player_id=player.id,
                         new_score=new_score,
                         new_games_played=new_games_played,
-                        new_gender=Gender(new_gender.lower()),
+                        new_gender=new_gender.lower(),
                         new_name=new_name,
                     )
                     state.set_players(players)
@@ -173,7 +186,19 @@ with sidebar:
                         st.success(f"Score changed to **{new_score}** from {old_score}")  # noqa E501
                     if new_games_played != old_games_played:
                         st.success(f"Games played changed to **{new_games_played}** from {old_games_played}")  # noqa E501
-                    if new_gender.lower() != old_gender.value.lower():
-                        st.success(f"Gender changed to **{new_gender}** from {old_gender.value.capitalize()}")  # noqa E501
+                    if new_gender.lower() != old_gender.lower():
+                        st.success(f"Gender changed to **{new_gender}** from {old_gender.capitalize()}")  # noqa E501
                     if new_name != old_name:
                         st.success(f"Name changed to **{new_name}** from {old_name}")  # noqa E501
+
+
+    @st.dialog("Are you sure you want to restart the tournament?")
+    def restart_tournament_dialog():
+        st.write("**This will reset all scores and games played to zero. There will be no way to undo this.**")  # noqa E501
+        if st.button("Yes, restart tournament."):
+            state.restart_tournament()
+            st.success("Tournament restarted.")
+            st.rerun()
+
+    if st.button("Restart Tournament"):
+        restart_tournament_dialog()

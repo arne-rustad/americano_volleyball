@@ -32,12 +32,8 @@ class FirestoreState:
     # Players
     def set_players(self, players: PlayerList) -> None:
         """Set the players in Firestore."""
-        print("hello")
         data = players.model_dump()
-        print(data)
-        print("hello")
         self._set_data('players', data)
-        print("hello")
 
     def get_players(self) -> PlayerList:
         """Get the players from Firestore."""
@@ -112,6 +108,14 @@ class FirestoreState:
         self.delete_tournament_options()
         self.delete_game_session()
         self.delete_defaults()
+    
+    def restart_tournament(self) -> None:
+        """Reset the scores and games played for all players."""
+        players = self.get_players()
+        for player in players.players:
+            player.score = 0
+            player.games_played = 0
+        self.set_players(players)
 
     # Internal helper methods
     def _set_data(self, key: str, data: dict) -> None:

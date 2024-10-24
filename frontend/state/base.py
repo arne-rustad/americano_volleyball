@@ -59,3 +59,7 @@ class State(ABC):
     @abstractmethod
     def end_tournament(self) -> None:
         pass
+
+    @abstractmethod
+    def restart_tournament(self) -> None:
+        pass

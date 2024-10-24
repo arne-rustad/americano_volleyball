@@ -91,7 +91,7 @@ if game_session is None:
             st.stop()
 
         game_session = GameSession(
-            n_courts=n_courts, n_game_points=n_game_points, players=players
+            n_courts=n_courts, n_game_points=n_game_points,
         )
         game_session.create_court_sessions(
             n_players_each_team=n_court_players,
