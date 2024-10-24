@@ -1,0 +1,27 @@
+# The formatter wraps lines at a length of 88
+line-length = 79
+
+[lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # Remove unused noqa
+    "RUF100"
+]
+
+[lint.pycodestyle]
+max-line-length = 79
+
+[lint.per-file-ignores]
+# Disable line length checks (E501) for Jupyter notebooks
+"*.ipynb" = ["E501"]

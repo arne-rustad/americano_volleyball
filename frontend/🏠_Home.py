@@ -7,7 +7,8 @@ This app was created for a volleyball tournament with a format inspired by the \
 padel game Mexicano 🏸 (a variant of Americano), but where more flexibility was needed \
 with respect to number of players on each court and the number of courts in \
 each round. The app allows for *a variable number of players on each court* and \
-*a variable number of courts in each round*."""
+*a variable number of courts in each round*. \
+"""  # noqa E501
 
 mexicano_description = """\
 The Mexicano padel tournament is a dynamic, social format where players are \
