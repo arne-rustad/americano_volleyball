@@ -26,7 +26,7 @@ if tournament_options is None:
         st.rerun()
 
 else:
-    # If tournament options are already set, display the current tournament type
+    # If tournament options are already set, display the current tournament type  # noqa E501
     tournament_type = "Mix Tournament" if tournament_options.mix_tournament else "Regular Tournament"  # noqa E501
 
     st.write(f"Current Tournament Type: **{tournament_type}**")

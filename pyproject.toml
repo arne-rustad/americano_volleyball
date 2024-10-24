@@ -13,6 +13,7 @@ ipykernel = "^6.29.5"
 python-dotenv = "^1.0.1"
 pytest = "^8.3.3"
 pyyaml = "^6.0.2"
+firebase-admin = "^6.5.0"
 
 
 [build-system]
