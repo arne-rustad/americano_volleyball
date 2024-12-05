@@ -5,9 +5,12 @@ import yaml
 from americano.models.enums import Gender
 from americano.paths import SAVED_PLAYERS_PATH
 from frontend.config import INFO_ICON
+from frontend.panes.common import at_start
 from frontend.state.get_state import get_state
 
-state = get_state(user_id="osvb_hostslepp")
+at_start()
+
+state = get_state(user_id=st.session_state.session_id)
 
 st.set_page_config(layout="wide")
 

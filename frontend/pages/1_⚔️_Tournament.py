@@ -1,9 +1,12 @@
 import streamlit as st
 
+from frontend.panes.common import at_start
 from frontend.state.get_state import get_state
 from frontend.utils.models.tournament_options import TournamentOptions
 
-state = get_state(user_id="osvb_hostslepp")
+at_start()
+
+state = get_state(user_id=st.session_state.session_id)
 
 st.title("⚔️ Tournament")
 

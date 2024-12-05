@@ -1,9 +1,12 @@
 import streamlit as st
 
 from frontend.config import INFO_ICON
+from frontend.panes.common import at_start
 from frontend.state.get_state import get_state
 
-state = get_state(user_id="osvb_hostslepp")
+at_start()
+
+state = get_state(user_id=st.session_state.session_id)
 
 st.title("🏅 Leaderboard")
 
