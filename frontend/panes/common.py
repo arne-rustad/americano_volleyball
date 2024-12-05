@@ -50,20 +50,23 @@ def initialize_streamlit():
         st.stop()
 
 
-# def set_page_configs():
-#     st.set_page_config(
-#         page_title="Americano Volleyball App",
-#         page_icon="frontend/assets/favicon.ico",
-#         layout="wide",
-#     )
+def set_page_configs():
+    st.set_page_config(
+        page_title="Americano Volleyball App",
+        # page_icon="frontend/assets/favicon.ico",
+        layout="wide",
+    )
 
 
 # def render_user_info():
 #     st.markdown(f'<p style="font-size:14px;margin-bottom:0px;bottom:0px"><b>User</b></p><p style="font-size:12px;margin-bottom:0px">{st.session_state.controller.state.session_id}</p>', unsafe_allow_html=True)  # noqa E501
 
+def log_out():
+    st.session_state.session_id = None
+
 
 def at_start():
-    # set_page_configs()
+    set_page_configs()
     # st.session_state.setdefault("initialized", False)
     st.session_state.setdefault("session_id", None)
     # st.session_state.setdefault("authentication_status", None)
@@ -73,3 +76,8 @@ def at_start():
     #     st.stop()
 
     initialize_streamlit()
+
+    with st.sidebar:
+        st.markdown(f"**Logged in as**: {st.session_state.session_id}")
+        st.button("Logout", on_click=log_out)
+        st.divider()

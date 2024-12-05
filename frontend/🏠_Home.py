@@ -1,5 +1,9 @@
 import streamlit as st
 
+from frontend.panes.common import at_start
+
+at_start()
+
 st.title("Americano App for Volleyball🏐")
 
 intro = """\

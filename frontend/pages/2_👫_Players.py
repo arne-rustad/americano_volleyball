@@ -12,8 +12,6 @@ at_start()
 
 state = get_state(user_id=st.session_state.session_id)
 
-st.set_page_config(layout="wide")
-
 tournament_options = state.get_tournament_options()
 if tournament_options is None:
     st.info("You must first start a tournament.", icon=INFO_ICON)
