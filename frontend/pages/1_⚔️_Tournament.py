@@ -36,9 +36,21 @@ else:
     players = state.get_players()
     st.write(f"Number of players: **{len(players.players)}**")
 
-    # End tournament functionality
-    st.header("End tournament")
+    st.divider()
 
+    # Restart tournament functionality
+    @st.dialog("Are you sure you want to restart the tournament?")
+    def restart_tournament_dialog():
+        st.write("**This will reset all scores and games played to zero. There will be no way to undo this.**")  # noqa E501
+        if st.button("Yes, restart tournament."):
+            state.restart_tournament()
+            st.success("Tournament restarted.")
+            st.rerun()
+
+    if st.button("Restart Tournament"):
+        restart_tournament_dialog()
+
+    # End tournament functionality
     @st.dialog("Are you sure you want to delete the tournament?")
     def end_tournament_dialog():
         st.write("**This will permanently delete the tournament and all associated data.**")  # noqa E501
