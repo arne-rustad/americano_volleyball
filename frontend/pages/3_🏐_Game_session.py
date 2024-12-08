@@ -4,7 +4,7 @@ from americano.game_session import GameSession
 from americano.player_manager import PlayerManager
 from frontend.config import INFO_ICON, WARNING_ICON
 from frontend.panes.common import at_start
-from frontend.state.get_state import get_state
+from frontend.state.get_state import State, get_state
 
 at_start()
 
@@ -135,7 +135,7 @@ else:
 
     # For each court, display the players and score input
 
-    needs_to_rerun_due_to_automatic_points_update = False
+    # needs_to_rerun_due_to_automatic_points_update = False
 
     for i, court_session in enumerate(game_session.court_sessions):
         st.header(f"Court {i+1}")
@@ -146,59 +146,65 @@ else:
         label_team_A = f"Score for Team A in Court {i+1}"
         label_team_B = f"Score for Team B in Court {i+1}"
 
+        def update_score_for_team(state: State, court_index=i, score_team_A=None, score_team_B=None):  # noqa E501
+            game_session.update_session_score(
+                court_index=court_index,
+                score_team_A=score_team_A,
+                score_team_B=score_team_B,
+            )
+            state.set_game_session(game_session)
+
         with col_teamA:
             st.write(f"**Team A:** {', '.join(court_session.teamA)}")
         with col_score_teamA:
             score_team_A = st.number_input(
                 label_team_A,
+                key=label_team_A,
                 min_value=0,
                 max_value=game_session.n_game_points,
                 value=court_session.score_team_A,
                 placeholder=label_team_A,
                 label_visibility="collapsed",
+                on_change=lambda index=i, label_A=label_team_A: update_score_for_team(  # noqa E501
+                    state=state,
+                    court_index=index,
+                    score_team_A=st.session_state[label_A]
+                ),
             )
 
         with col_teamB:
             st.write(f"**Team B:** {', '.join(court_session.teamB)}")
         with col_score_teamB:
-            game_session.update_session_score(i, score_team_A=score_team_A)
             score_team_B = st.number_input(
                 label_team_B,
+                key=label_team_B,
                 min_value=0,
                 max_value=game_session.n_game_points,
                 value=court_session.score_team_B,
                 placeholder=label_team_B,
                 label_visibility="collapsed",
+                on_change=lambda index=i, label_B=label_team_B: update_score_for_team(  # noqa E501
+                    state=state,
+                    court_index=index,
+                    score_team_B=st.session_state[label_B]
+                ),
             )
 
-        match sum(score is None for score in [score_team_A, score_team_B]):
-            case 0:
-                if score_team_A + score_team_B != game_session.n_game_points:
-                    st.warning(
-                        f"The score for team A ({score_team_A}) and team B ({score_team_B})"  # noqa E501
-                        f" does not add up to the decided number of game points ({game_session.n_game_points})",  # noqa E501
-                        icon=WARNING_ICON,
-                    )
-            case 1:
-                needs_to_rerun_due_to_automatic_points_update = True
-                if score_team_A is None:
-                    court_session.score_team_A = (
-                        game_session.n_game_points - score_team_B
-                    )
-                if score_team_B is None:
-                    court_session.score_team_B = (
-                        game_session.n_game_points - score_team_A
-                    )
-            case 2:
-                pass
-            case _:
-                raise ValueError("This should never happen")
-
-        state.set_game_session(game_session)
-        if needs_to_rerun_due_to_automatic_points_update:
-            st.rerun()
+        if (
+            score_team_A is not None and score_team_B is not None
+            and game_session.n_game_points is not None
+            and score_team_A + score_team_B != game_session.n_game_points
+        ):
+            st.warning(
+                f"The score for team A ({score_team_A}) and team B ({score_team_B})"  # noqa E501
+                f" does not add up to the decided number of game points ({game_session.n_game_points})",  # noqa E501
+                icon=WARNING_ICON,
+            )
 
     # Update the scores if button pressed
+    st.write("Update scores for the current session")
+    st.write(game_session.finished)
+    st.write(game_session)
     if game_session.finished and st.button("Finish Session"):
         players = state.get_players()
         player_manager = PlayerManager(player_list=players)

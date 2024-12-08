@@ -21,20 +21,23 @@ class GameSession(BaseModel):
         score_team_A: int = None,
         score_team_B: int = None,
     ):
-        if self.finished:
-            return ValueError("All sessions are already finished")
-
         if score_team_A is None and score_team_B is None:
-            return ValueError("Both team scores cannot be None")
-        elif score_team_A is None:
-            score_team_A = self.n_game_points - score_team_B
-        elif score_team_B is None:
-            score_team_B = self.n_game_points - score_team_A
+            raise ValueError("Both team scores cannot be None")
+        
+        assert 0 <= court_index < len(self.court_sessions) # Make sure the court index is valid  # noqa E501
 
-        if 0 <= court_index < len(self.court_sessions):
-            self.court_sessions[court_index].add_score(
-                score_team_A, score_team_B
-            )
+        if score_team_A is not None:
+            self.court_sessions[court_index].score_team_A = score_team_A
+        
+        if score_team_B is not None:
+            self.court_sessions[court_index].score_team_B = score_team_B
+        
+        if self.n_game_points is not None:
+            if self.court_sessions[court_index].score_team_A is None:
+                self.court_sessions[court_index].score_team_A = self.n_game_points - score_team_B  # noqa E501
+            elif self.court_sessions[court_index].score_team_B is None:
+                self.court_sessions[court_index].score_team_B = self.n_game_points - score_team_A  # noqa E501
+
 
     def add_court_session(
         self,
