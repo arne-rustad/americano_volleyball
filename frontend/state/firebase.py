@@ -6,11 +6,12 @@ from firebase_admin import credentials, firestore
 
 from americano.game_session import GameSession
 from americano.players import PlayerList
+from frontend.state.base import State
 from frontend.utils.models.defaults import GameSessionDefaults
 from frontend.utils.models.tournament_options import TournamentOptions
 
 
-class FirestoreState:
+class FirestoreState(State):
     def __init__(self, user_id: str):
         """Initialize with a unique user ID."""
         self.user_id = user_id  # Used to identify the user's data in Firestore
@@ -100,22 +101,6 @@ class FirestoreState:
     def delete_tournament_options(self) -> None:
         """Delete the tournament options from Firestore."""
         self._delete_data('tournament_options')
-
-    # End Tournament
-    def end_tournament(self) -> None:
-        """Clear tournament-related data from Firestore."""
-        self.delete_players()
-        self.delete_tournament_options()
-        self.delete_game_session()
-        self.delete_defaults()
-    
-    def restart_tournament(self) -> None:
-        """Reset the scores and games played for all players."""
-        players = self.get_players()
-        for player in players.players:
-            player.score = 0
-            player.games_played = 0
-        self.set_players(players)
 
     # Internal helper methods
     def _set_data(self, key: str, data: dict) -> None:

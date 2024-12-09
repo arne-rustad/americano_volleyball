@@ -56,10 +56,19 @@ class State(ABC):
     def delete_tournament_options(self) -> None:
         pass
 
-    @abstractmethod
     def end_tournament(self) -> None:
-        pass
+        """Clear tournament-related data"""
+        self.delete_players()
+        self.delete_tournament_options()
+        self.delete_game_session()
+        self.delete_defaults()
 
-    @abstractmethod
     def restart_tournament(self) -> None:
-        pass
+        """Reset the scores and games played for all players. End the game session if active."""  # noqa E501
+        players = self.get_players()
+        for player in players.players:
+            player.score = 0
+            player.games_played = 0
+        self.set_players(players)
+
+        self.delete_game_session()
