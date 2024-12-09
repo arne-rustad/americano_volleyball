@@ -41,7 +41,9 @@ else:
     # Restart tournament functionality
     @st.dialog("Are you sure you want to restart the tournament?")
     def restart_tournament_dialog():
-        st.write("**This will reset all scores and games played to zero. There will be no way to undo this.**")  # noqa E501
+        st.write(
+            "**This will reset all scores and games played to zero for all players."  # noqa E501
+            " Any ongoing game session will be deleted as well. There will be no way to undo this.**")  # noqa E501
         if st.button("Yes, restart tournament."):
             state.restart_tournament()
             st.success("Tournament restarted.")

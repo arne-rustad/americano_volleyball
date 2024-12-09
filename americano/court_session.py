@@ -7,7 +7,6 @@ class CourtSession(BaseModel):
     n_players_each_team: int = Field()
     teamA: List[str] = Field()
     teamB: List[str] = Field()
-    n_game_points: int = Field()
     score_team_A: Optional[int] = Field(default=None)
     score_team_B: Optional[int] = Field(default=None)
 
