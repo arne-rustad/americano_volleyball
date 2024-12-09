@@ -1,7 +1,7 @@
 from random import shuffle
-from typing import List
+from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from americano.court_session import CourtSession
 from americano.player_manager import PlayerManager
@@ -11,9 +11,28 @@ from .players import PlayerList
 
 class GameSession(BaseModel):
     n_courts: int = Field()
-    n_game_points: int = Field()
+    n_game_points: Optional[int] = Field(default=None)
+    resting_points: Optional[int | float] = Field(default=None)
+    allow_negative_player_scores: bool = Field(default=False)
+
     court_sessions: List[CourtSession] = Field(default_factory=list)
     score_added_to_players: bool = Field(default=False)
+
+    @field_validator("n_courts")
+    def must_be_positive(cls, v):
+        if v <= 0:
+            raise ValueError("n_courts must be positive")
+        return v
+    
+    @field_validator("resting_points")
+    def set_resting_points_to_default_if_none(cls, v, values):
+        if v is None:
+            n_game_points = values.data.get("n_game_points")
+            if n_game_points is None:
+                return 0
+            else:
+                return n_game_points / 2
+        return v
 
     def update_session_score(
         self,
@@ -25,6 +44,12 @@ class GameSession(BaseModel):
             raise ValueError("Both team scores cannot be None")
         
         assert 0 <= court_index < len(self.court_sessions) # Make sure the court index is valid  # noqa E501
+
+        if not self.allow_negative_player_scores:
+            if score_team_A is not None and score_team_A < 0:
+                raise ValueError("Team A score cannot be negative")
+            if score_team_B is not None and score_team_B < 0:
+                raise ValueError("Team B score cannot be negative")
 
         if score_team_A is not None:
             self.court_sessions[court_index].score_team_A = score_team_A
@@ -49,7 +74,6 @@ class GameSession(BaseModel):
             n_players_each_team=n_players_each_team,
             teamA=teamA,
             teamB=teamB,
-            n_game_points=self.n_game_points,
         )
         self.court_sessions.append(court_session)
 
@@ -118,18 +142,18 @@ class GameSession(BaseModel):
     def finished(self) -> bool:
         return all(session.finished for session in self.court_sessions)
 
-    def add_score_to_players(self, override: bool = False):
-        if self.score_added_to_players and not override:
-            print(
-                "Score already added to players and override = False. Skipping..."  # noqa E501
-            )
+    # def add_score_to_players(self, override: bool = False):
+    #     if self.score_added_to_players and not override:
+    #         print(
+    #             "Score already added to players and override = False. Skipping..."  # noqa E501
+    #         )
 
-        if not self.finished:
-            return ValueError(
-                "Cannot add score to players until all sessions are finished"
-            )
+    #     if not self.finished:
+    #         return ValueError(
+    #             "Cannot add score to players until all sessions are finished"
+    #         )
 
-        for session in self.court_sessions:
-            session.add_score_to_players()
+    #     for session in self.court_sessions:
+    #         session.add_score_to_players()
 
-        self.score_added_to_players = True
+        # self.score_added_to_players = True
