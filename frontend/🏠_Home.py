@@ -28,5 +28,7 @@ st.markdown(intro)
 st.subheader("The Mexicano Padel Tournament format")
 st.markdown(mexicano_description)
 
+st.markdown("\n\nHope you enjoy the app!")
+
 
 # House emoji 🏠

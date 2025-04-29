@@ -1,3 +1,4 @@
+import random
 from americano.court_session import CourtSession
 from americano.models.enums import Gender
 from americano.players import Player, PlayerList
@@ -17,22 +18,25 @@ class PlayerManager:
         if n % 2 != 0:
             raise ValueError("Cannot draw an odd number of players (yet)")
 
-        # Sort players by score, descending. We do this first to make the sorting easier to test.  # noqa E501
-        players_drawn = sorted(
-            self.player_list.players,
-            key=lambda x: x.score,
-            reverse=True,
-        )
 
-        # Sort players by games played, ascending
-        players_drawn = sorted(
-            self.player_list.players,
-            key=lambda x: x.games_played,
-            reverse=False,
-        )
 
         # If mix tournament, return first one man, then one woman, then one man, etc.  # noqa E501
         if mix_tournament:
+            # TODO: This must be updated to reflect the new way of drawing players. Adding random shuffling.  # noqa E501
+
+            # Sort players by score, descending. We do this first to make the sorting easier to test.  # noqa E501
+            players_drawn = sorted(
+                self.player_list.players,
+                key=lambda x: x.score,
+                reverse=True,
+            )
+
+            # Sort players by games played, ascending
+            players_drawn = sorted(
+                self.player_list.players,
+                key=lambda x: x.games_played,
+                reverse=False,
+            )
             male_players = [
                 p for p in players_drawn if p.gender == Gender.MALE.value
             ]
@@ -100,6 +104,15 @@ class PlayerManager:
             return selected_players
         # If not mix tournament, just return the first n players
         else:
+            # Shuffle the players
+            random.shuffle(self.player_list.players)
+
+            # Sort players by games played, ascending
+            players_drawn = sorted(
+                self.player_list.players,
+                key=lambda x: x.games_played,
+                reverse=False,
+            )
             players_drawn = players_drawn[:n]
             return sorted(players_drawn, key=lambda x: x.score, reverse=True)
 
