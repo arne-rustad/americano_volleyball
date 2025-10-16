@@ -57,6 +57,7 @@ export default function NewGameSessionPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activePlayerCount, setActivePlayerCount] = useState<number>(0);
   const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
+  const [isLoadingDefaults, setIsLoadingDefaults] = useState(true);
 
   const form = useForm<GameSessionFormData>({
     resolver: zodResolver(gameSessionSchema),
@@ -67,6 +68,47 @@ export default function NewGameSessionPage() {
       resting_points: 12,
     },
   });
+
+  // Fetch previous game session to use as defaults
+  useEffect(() => {
+    async function fetchPreviousGameSession() {
+      setIsLoadingDefaults(true);
+      try {
+        const { data, error } = await supabase
+          .from("game_sessions")
+          .select("id, n_courts, n_game_points, resting_points")
+          .eq("tournament_id", tournamentId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (data && !error) {
+          // Fetch the first court session to get n_players_each_team
+          const { data: courtData } = await supabase
+            .from("court_sessions")
+            .select("n_players_each_team")
+            .eq("game_session_id", data.id)
+            .limit(1)
+            .single();
+
+          // Set form values from previous session
+          form.reset({
+            n_courts: data.n_courts,
+            n_players_per_team: courtData?.n_players_each_team || 2,
+            n_game_points: data.n_game_points || 24,
+            resting_points: data.resting_points || 12,
+          });
+        }
+      } catch (error) {
+        // No previous session or error - use defaults (already set)
+        console.log("No previous game session found, using defaults");
+      } finally {
+        setIsLoadingDefaults(false);
+      }
+    }
+
+    fetchPreviousGameSession();
+  }, [tournamentId]);
 
   // Fetch active player count
   useEffect(() => {
@@ -164,23 +206,23 @@ export default function NewGameSessionPage() {
         </Link>
       </div>
 
-      {!hasEnoughPlayers && !isLoadingPlayers && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Not Enough Active Players</AlertTitle>
-          <AlertDescription>
-            This configuration needs {requiredPlayers} active players, but you
-            only have {activePlayerCount}.{" "}
-            <Link
-              href={`/tournaments/${tournamentId}/players`}
-              className="underline font-medium"
-            >
-              Add or activate players
-            </Link>{" "}
-            to continue, or reduce the number of courts/players per team.
-          </AlertDescription>
-        </Alert>
-      )}
+          {!hasEnoughPlayers && !isLoadingPlayers && !isLoadingDefaults && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Not Enough Active Players</AlertTitle>
+              <AlertDescription>
+                This configuration needs {requiredPlayers} active players, but you
+                only have {activePlayerCount}.{" "}
+                <Link
+                  href={`/tournaments/${tournamentId}/players`}
+                  className="underline font-medium"
+                >
+                  Add or activate players
+                </Link>{" "}
+                to continue, or reduce the number of courts/players per team.
+              </AlertDescription>
+            </Alert>
+          )}
 
       {errorMessage && hasEnoughPlayers && (
         <Alert variant="destructive" className="mb-6">
@@ -216,7 +258,7 @@ export default function NewGameSessionPage() {
                     <FormLabel>Number of Courts *</FormLabel>
                     <Select
                       onValueChange={(value) => field.onChange(Number(value))}
-                      defaultValue={field.value.toString()}
+                      value={field.value.toString()}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -247,7 +289,7 @@ export default function NewGameSessionPage() {
                     <FormLabel>Players Per Team *</FormLabel>
                     <Select
                       onValueChange={(value) => field.onChange(Number(value))}
-                      defaultValue={field.value.toString()}
+                      value={field.value.toString()}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -365,13 +407,13 @@ export default function NewGameSessionPage() {
               <div className="flex gap-4 pt-4">
                 <Button 
                   type="submit" 
-                  disabled={isSubmitting || !hasEnoughPlayers || isLoadingPlayers} 
+                  disabled={isSubmitting || !hasEnoughPlayers || isLoadingPlayers || isLoadingDefaults} 
                   className="flex-1"
                 >
                   {isSubmitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  {isLoadingPlayers
+                  {isLoadingPlayers || isLoadingDefaults
                     ? "Loading..."
                     : !hasEnoughPlayers
                     ? `Need ${requiredPlayers - activePlayerCount} More Players`
