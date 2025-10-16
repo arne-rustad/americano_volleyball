@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase";
 import {
   Card,
   CardContent,
@@ -33,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { createGameSession } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -49,7 +51,12 @@ export default function NewGameSessionPage() {
   const params = useParams();
   const router = useRouter();
   const tournamentId = Number(params.id);
+  const supabase = createClient();
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activePlayerCount, setActivePlayerCount] = useState<number>(0);
+  const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
 
   const form = useForm<GameSessionFormData>({
     resolver: zodResolver(gameSessionSchema),
@@ -61,6 +68,34 @@ export default function NewGameSessionPage() {
     },
   });
 
+  // Fetch active player count
+  useEffect(() => {
+    async function fetchActivePlayerCount() {
+      setIsLoadingPlayers(true);
+      try {
+        const { count } = await supabase
+          .from("players")
+          .select("*", { count: "exact", head: true })
+          .eq("tournament_id", tournamentId)
+          .eq("is_active", true);
+        
+        setActivePlayerCount(count || 0);
+      } catch (error) {
+        console.error("Error fetching player count:", error);
+      } finally {
+        setIsLoadingPlayers(false);
+      }
+    }
+    
+    fetchActivePlayerCount();
+  }, [tournamentId]);
+
+  // Watch form values to calculate required players
+  const nCourts = form.watch("n_courts");
+  const nPlayersPerTeam = form.watch("n_players_per_team");
+  const requiredPlayers = nCourts * nPlayersPerTeam * 2;
+  const hasEnoughPlayers = !isLoadingPlayers && activePlayerCount >= requiredPlayers;
+  
   // Watch for changes in game points and ask if user wants to update resting points
   const gamePoints = form.watch("n_game_points");
   const [previousGamePoints, setPreviousGamePoints] = useState(24);
@@ -86,7 +121,17 @@ export default function NewGameSessionPage() {
   }, [gamePoints]);
 
   async function onSubmit(data: GameSessionFormData) {
+    // Validate player count before making API call
+    const required = data.n_courts * data.n_players_per_team * 2;
+    if (activePlayerCount < required) {
+      const message = `Not enough players. Need ${required}, have ${activePlayerCount}`;
+      setErrorMessage(message);
+      toast.error(message);
+      return; // Don't make API call
+    }
+
     setIsSubmitting(true);
+    setErrorMessage(null); // Clear previous errors
 
     try {
       // Build court configs array - all courts have same player count for MVP
@@ -105,9 +150,11 @@ export default function NewGameSessionPage() {
       router.push(
         `/tournaments/${tournamentId}/game-sessions/${response.id}`
       );
-    } catch (error) {
-      console.error("Error creating game session:", error);
-      toast.error("Failed to create game session. Please try again.");
+    } catch (error: any) {
+      // Don't log to console - we're displaying it in the UI
+      const message = error.message || "Failed to create game session. Please try again.";
+      setErrorMessage(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -123,6 +170,40 @@ export default function NewGameSessionPage() {
           </Button>
         </Link>
       </div>
+
+      {!hasEnoughPlayers && !isLoadingPlayers && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Not Enough Active Players</AlertTitle>
+          <AlertDescription>
+            This configuration needs {requiredPlayers} active players, but you
+            only have {activePlayerCount}.{" "}
+            <Link
+              href={`/tournaments/${tournamentId}/players`}
+              className="underline font-medium"
+            >
+              Add or activate players
+            </Link>{" "}
+            to continue, or reduce the number of courts/players per team.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {errorMessage && hasEnoughPlayers && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {errorMessage}{" "}
+            <Link
+              href={`/tournaments/${tournamentId}/players`}
+              className="underline font-medium"
+            >
+              Manage players
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -244,11 +325,19 @@ export default function NewGameSessionPage() {
               />
 
               <div className="flex gap-4 pt-4">
-                <Button type="submit" disabled={isSubmitting} className="flex-1">
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting || !hasEnoughPlayers || isLoadingPlayers} 
+                  className="flex-1"
+                >
                   {isSubmitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Create Game Session
+                  {isLoadingPlayers
+                    ? "Loading..."
+                    : !hasEnoughPlayers
+                    ? `Need ${requiredPlayers - activePlayerCount} More Players`
+                    : "Create Game Session"}
                 </Button>
                 <Link
                   href={`/tournaments/${tournamentId}/game-sessions`}

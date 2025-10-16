@@ -129,9 +129,10 @@ export default function ActiveGameSessionPage() {
 
       toast.success("Game session completed! Scores have been updated.");
       router.push(`/tournaments/${tournamentId}/game-sessions`);
-    } catch (error) {
-      console.error("Error completing game session:", error);
-      toast.error("Failed to complete game session. Please try again.");
+    } catch (error: any) {
+      // Don't log to console - we're displaying it in the UI
+      const message = error.message || "Failed to complete game session. Please try again.";
+      toast.error(message);
     } finally {
       setIsCompleting(false);
     }
