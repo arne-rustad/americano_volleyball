@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -96,29 +96,22 @@ export default function NewGameSessionPage() {
   const requiredPlayers = nCourts * nPlayersPerTeam * 2;
   const hasEnoughPlayers = !isLoadingPlayers && activePlayerCount >= requiredPlayers;
   
-  // Watch for changes in game points and ask if user wants to update resting points
-  const gamePoints = form.watch("n_game_points");
-  const [previousGamePoints, setPreviousGamePoints] = useState(24);
-
-  useEffect(() => {
-    if (gamePoints && gamePoints !== previousGamePoints) {
-      const halfPoints = gamePoints / 2;
-      const currentRestingPoints = form.getValues("resting_points") || 0;
+  // Handle game points blur - suggest resting points when user finishes editing
+  const handleGamePointsBlur = (currentValue: number) => {
+    const halfPoints = currentValue / 2;
+    const currentRestingPoints = form.getValues("resting_points") || 0;
+    
+    // Only ask if the current resting points isn't already half
+    if (currentRestingPoints !== halfPoints) {
+      const shouldUpdate = window.confirm(
+        `Would you like to set resting points to ${halfPoints} (half of ${currentValue} game points)?`
+      );
       
-      // Only ask if the current resting points isn't already half
-      if (currentRestingPoints !== halfPoints) {
-        const shouldUpdate = window.confirm(
-          `Game points changed to ${gamePoints}. Would you like to set resting points to ${halfPoints} (half of game points)?`
-        );
-        
-        if (shouldUpdate) {
-          form.setValue("resting_points", halfPoints);
-        }
+      if (shouldUpdate) {
+        form.setValue("resting_points", halfPoints);
       }
-      
-      setPreviousGamePoints(gamePoints);
     }
-  }, [gamePoints]);
+  };
 
   async function onSubmit(data: GameSessionFormData) {
     // Validate player count before making API call
@@ -280,48 +273,93 @@ export default function NewGameSessionPage() {
               <FormField
                 control={form.control}
                 name="n_game_points"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Total Points Per Game *</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="24"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Mexicano-style: Play exactly this many points (e.g., 24
-                      points total, could be 12-12, 15-9, etc.)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const previousValue = useRef(field.value || 24);
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Total Points Per Game *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="24"
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value !== "" && value !== "0") {
+                              previousValue.current = Number(value);
+                            }
+                            field.onChange(value === "" ? "" : Number(value));
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            // If empty, restore to previous valid value
+                            if (value === "" || value === "0") {
+                              field.onChange(previousValue.current);
+                            } else {
+                              field.onChange(Number(value));
+                            }
+                            field.onBlur();
+                            // Check if we should suggest resting points
+                            const finalValue = Number(e.target.value || previousValue.current);
+                            if (finalValue > 0) {
+                              handleGamePointsBlur(finalValue);
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Mexicano-style: Play exactly this many points (e.g., 24
+                        points total, could be 12-12, 15-9, etc.)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="resting_points"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Resting Points</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.5"
-                        placeholder="12"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Points awarded to players not playing this round (typically
-                      half of game points)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const previousValue = useRef(field.value || 12);
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Resting Points</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          placeholder="12"
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value !== "" && value !== "0") {
+                              previousValue.current = Number(value);
+                            }
+                            field.onChange(value === "" ? "" : Number(value));
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            // If empty, restore to previous valid value
+                            if (value === "" || value === "0") {
+                              field.onChange(previousValue.current);
+                            } else {
+                              field.onChange(Number(value));
+                            }
+                            field.onBlur();
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Points awarded to players not playing this round (typically
+                        half of game points)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <div className="flex gap-4 pt-4">
