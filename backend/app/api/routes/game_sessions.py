@@ -3,12 +3,13 @@
 from fastapi import APIRouter, HTTPException
 
 from americano.player_manager import PlayerManager
-from americano.players import Player as AmericanoPlayer, PlayerList
+from americano.players import Player as AmericanoPlayer
+from americano.players import PlayerList
 from app.database import supabase
 from app.schemas.game_session import (
+    CourtSessionResponse,
     GameSessionCreate,
     GameSessionResponse,
-    CourtSessionResponse,
     PlayerSwapRequest,
 )
 
