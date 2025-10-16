@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Trophy, Medal, Users } from "lucide-react";
+import { Trophy, Medal, Users, RotateCcw } from "lucide-react";
 
 import {
   Table,
@@ -13,10 +13,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { createClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 import { toast } from "sonner";
+import { resetTournament } from "@/lib/api";
 
 type Player = Database["public"]["Tables"]["players"]["Row"];
 type Tournament = Database["public"]["Tables"]["tournaments"]["Row"];
@@ -29,6 +42,7 @@ export default function LeaderboardPage() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -61,6 +75,23 @@ export default function LeaderboardPage() {
       toast.error("Failed to load leaderboard");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleResetTournament() {
+    setIsResetting(true);
+    try {
+      const result = await resetTournament(tournamentId);
+      toast.success(
+        `Tournament reset! ${result.players_reset} players and ${result.sessions_deleted} game sessions cleared.`
+      );
+      // Refresh data
+      await fetchData();
+    } catch (error: any) {
+      console.error("Error resetting tournament:", error);
+      toast.error(error.message || "Failed to reset tournament");
+    } finally {
+      setIsResetting(false);
     }
   }
 
@@ -102,11 +133,42 @@ export default function LeaderboardPage() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Leaderboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Current standings for {tournament?.name}
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Leaderboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Current standings for {tournament?.name}
+          </p>
+        </div>
+        
+        {players.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="gap-2" disabled={isResetting}>
+                <RotateCcw className="h-4 w-4" />
+                Reset Tournament
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset Tournament?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will reset all player scores to 0 and delete all game sessions.
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleResetTournament}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Reset Tournament
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {players.length === 0 ? (

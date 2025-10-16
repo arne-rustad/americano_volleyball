@@ -3,8 +3,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes import game_sessions, tournaments
 from app.config import settings
-from app.api.routes import game_sessions
 
 app = FastAPI(
     title=settings.api_title,
@@ -38,10 +38,17 @@ async def health():
     return {"status": "healthy"}
 
 
-# Only game session routes (complex logic)
+# Game session routes (complex logic)
 app.include_router(
     game_sessions.router,
     prefix="/api",
     tags=["game_sessions"],
+)
+
+# Tournament routes
+app.include_router(
+    tournaments.router,
+    prefix="/api",
+    tags=["tournaments"],
 )
 
