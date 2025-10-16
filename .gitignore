@@ -167,3 +167,19 @@ saved_players.yaml
 .streamlit/secrets.toml
 .streamlit/secrets.toml.copy
 americano-volleyball-app-firebase-adminsdk.json
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Supabase
+supabase/.branches
+supabase/.temp
