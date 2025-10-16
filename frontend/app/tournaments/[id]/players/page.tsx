@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, UserCheck, UserX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -184,6 +184,27 @@ export default function PlayersPage() {
     }
   }
 
+  async function handleToggleActive(player: Player) {
+    try {
+      const { error } = await supabase
+        .from("players")
+        .update({ is_active: !player.is_active })
+        .eq("id", player.id);
+
+      if (error) throw error;
+
+      toast.success(
+        !player.is_active
+          ? `${player.name} is now active`
+          : `${player.name} is now inactive`
+      );
+      fetchTournamentAndPlayers();
+    } catch (error) {
+      console.error("Error toggling player status:", error);
+      toast.error("Failed to update player status");
+    }
+  }
+
   if (isLoading) {
     return (
       <main className="container mx-auto px-4 py-8">
@@ -223,6 +244,7 @@ export default function PlayersPage() {
                 {tournament?.is_mix_tournament && (
                   <TableHead>Gender</TableHead>
                 )}
+                <TableHead>Status</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Games Played</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -230,13 +252,33 @@ export default function PlayersPage() {
             </TableHeader>
             <TableBody>
               {players.map((player) => (
-                <TableRow key={player.id}>
+                <TableRow key={player.id} className={!player.is_active ? "opacity-60" : ""}>
                   <TableCell className="font-medium">{player.name}</TableCell>
                   {tournament?.is_mix_tournament && (
                     <TableCell className="capitalize">
                       {player.gender || "-"}
                     </TableCell>
                   )}
+                  <TableCell>
+                    <Button
+                      variant={player.is_active ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleToggleActive(player)}
+                      className="gap-2"
+                    >
+                      {player.is_active ? (
+                        <>
+                          <UserCheck className="h-4 w-4" />
+                          Active
+                        </>
+                      ) : (
+                        <>
+                          <UserX className="h-4 w-4" />
+                          Inactive
+                        </>
+                      )}
+                    </Button>
+                  </TableCell>
                   <TableCell>{player.score}</TableCell>
                   <TableCell>{player.games_played}</TableCell>
                   <TableCell className="text-right">

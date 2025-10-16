@@ -40,17 +40,18 @@ async def create_game_session(
 
     tournament = tournament_response.data[0]
 
-    # Get all players
+    # Get all active players (inactive players are excluded from drawing)
     players_response = (
         supabase.table("players")
         .select("*")
         .eq("tournament_id", tournament_id)
+        .eq("is_active", True)
         .execute()
     )
     if not players_response.data:
         raise HTTPException(
             status_code=400,
-            detail="No players available for this tournament",
+            detail="No active players available for this tournament",
         )
 
     # Convert database players to Americano PlayerList
@@ -326,7 +327,7 @@ async def complete_game_session(session_id: int):
             }
         ).eq("id", player_id).execute()
 
-    # Handle resting players
+    # Handle resting players (all players who didn't play, including inactive)
     if session["resting_points"] and session["resting_points"] > 0:
         # Get all players in this tournament
         all_players_response = (
@@ -336,7 +337,7 @@ async def complete_game_session(session_id: int):
             .execute()
         )
 
-        # Award resting points to non-playing players
+        # Award resting points to all non-playing players (active or inactive)
         for player in all_players_response.data:
             if player["id"] not in playing_player_ids:
                 supabase.table("players").update(
