@@ -2,15 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Check, Loader2, ArrowLeftRight } from "lucide-react";
+import { ArrowLeft, Check, Loader2, ArrowLeftRight, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CourtCard } from "@/components/court-card";
 import { EditPlayersModal } from "@/components/edit-players-modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { createClient } from "@/lib/supabase";
-import { completeGameSession, swapPlayers } from "@/lib/api";
+import { completeGameSession, swapPlayers, deleteGameSession } from "@/lib/api";
 import { Database } from "@/lib/database.types";
 import { toast } from "sonner";
 
@@ -37,6 +47,8 @@ export default function ActiveGameSessionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchGameSession();
@@ -152,6 +164,22 @@ export default function ActiveGameSessionPage() {
     }
   }
 
+  async function handleDeleteSession() {
+    setIsDeleting(true);
+
+    try {
+      await deleteGameSession(sessionId);
+      toast.success("Game session deleted successfully");
+      router.push(`/tournaments/${tournamentId}/game-sessions`);
+    } catch (error: any) {
+      const message = error.message || "Failed to delete game session";
+      toast.error(message);
+      setIsDeleteDialogOpen(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   function getStatusBadge(status: GameSession["status"]) {
     switch (status) {
       case "pending":
@@ -183,6 +211,7 @@ export default function ActiveGameSessionPage() {
   );
 
   const isCompleted = gameSession?.status === "completed";
+  const isPending = gameSession?.status === "pending";
 
   if (isLoading) {
     return (
@@ -201,7 +230,20 @@ export default function ActiveGameSessionPage() {
             Back to Game Sessions
           </Button>
         </Link>
-        {gameSession && getStatusBadge(gameSession.status)}
+        <div className="flex items-center gap-3">
+          {gameSession && getStatusBadge(gameSession.status)}
+          {isPending && !hasAnyScores && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Session
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="mb-6">
@@ -296,6 +338,38 @@ export default function ActiveGameSessionPage() {
             courtSessions={courtSessions}
             onSwap={handleSwapPlayers}
           />
+
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Game Session?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this game session and all associated
+                  court assignments. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteSession}
+                  disabled={isDeleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </>
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </main>

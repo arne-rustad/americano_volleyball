@@ -323,6 +323,82 @@ async def swap_players(
     return {"message": "Players swapped successfully"}
 
 
+@router.delete("/game-sessions/{session_id}")
+async def delete_game_session(session_id: int):
+    """Delete a pending game session.
+    
+    Only allows deletion of game sessions that haven't started yet
+    (status = 'pending' and no scores entered).
+    """
+    # Check game session exists
+    session_response = (
+        supabase.table("game_sessions")
+        .select("*")
+        .eq("id", session_id)
+        .execute()
+    )
+    if not session_response.data:
+        raise HTTPException(status_code=404, detail="Game session not found")
+    
+    session = session_response.data[0]
+    
+    # Only allow deletion if session is pending
+    if session["status"] != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete game session with status '{session['status']}'. Only pending sessions can be deleted."
+        )
+    
+    # Check if any scores have been entered (extra safety check)
+    courts_response = (
+        supabase.table("court_sessions")
+        .select("*")
+        .eq("game_session_id", session_id)
+        .execute()
+    )
+    
+    has_scores = any(
+        court["score_team_a"] is not None or court["score_team_b"] is not None
+        for court in courts_response.data
+    )
+    
+    if has_scores:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete game session with scores entered"
+        )
+    
+    # Delete court_players for all courts in this session
+    for court in courts_response.data:
+        supabase.table("court_players").delete().eq(
+            "court_session_id", court["id"]
+        ).execute()
+    
+    # Delete court_sessions
+    supabase.table("court_sessions").delete().eq(
+        "game_session_id", session_id
+    ).execute()
+    
+    # Delete game_session
+    supabase.table("game_sessions").delete().eq("id", session_id).execute()
+    
+    # Clear current_game_session_id from tournament if this was the current session
+    if session["tournament_id"]:
+        tournament_response = (
+            supabase.table("tournaments")
+            .select("*")
+            .eq("id", session["tournament_id"])
+            .single()
+            .execute()
+        )
+        if tournament_response.data and tournament_response.data.get("current_game_session_id") == session_id:
+            supabase.table("tournaments").update(
+                {"current_game_session_id": None}
+            ).eq("id", session["tournament_id"]).execute()
+    
+    return {"message": "Game session deleted successfully"}
+
+
 @router.post(
     "/game-sessions/{session_id}/complete",
     response_model=GameSessionResponse,
