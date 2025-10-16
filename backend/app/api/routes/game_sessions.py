@@ -10,6 +10,7 @@ from app.schemas.game_session import (
 )
 from app.services import (
     GameCompletionService,
+    GameSessionAnalysisService,
     GameSessionService,
     PlayerSwapService,
 )
@@ -44,6 +45,16 @@ async def create_game_session(
 async def get_court_sessions(session_id: int):
     """Get all courts in a game session with player assignments."""
     return await GameSessionService.get_court_sessions(session_id)
+
+
+@router.get("/game-sessions/{session_id}/repetition-analysis")
+async def get_repetition_analysis(session_id: int):
+    """Analyze team and matchup repetitions for a game session.
+
+    Compares this session against all completed sessions in the same
+    tournament to identify repeated team combinations and matchups.
+    """
+    return await GameSessionAnalysisService.analyze_repetitions(session_id)
 
 
 @router.post("/game-sessions/{session_id}/swap-players")

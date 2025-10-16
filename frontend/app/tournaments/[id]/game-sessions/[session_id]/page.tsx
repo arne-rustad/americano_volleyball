@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CourtCard } from "@/components/court-card";
 import { EditPlayersModal } from "@/components/edit-players-modal";
+import { RepetitionAnalysisComponent } from "@/components/repetition-analysis";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -297,6 +298,14 @@ export default function ActiveGameSessionPage() {
             per game
           </div>
         )}
+      </div>
+
+      {/* Repetition Analysis */}
+      <div className="mb-6">
+        <RepetitionAnalysisComponent
+          sessionId={sessionId}
+          tournamentId={tournamentId}
+        />
       </div>
 
       {courtSessions.length === 0 ? (
