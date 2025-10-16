@@ -1,0 +1,41 @@
+[project]
+name = "americano-backend"
+version = "0.1.0"
+description = "FastAPI backend for Americano Volleyball tournament app"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.8.2",
+    "python-dotenv>=1.0.0",
+    "pydantic-settings>=2.1.0",
+    "supabase>=2.3.4",
+    "pandas>=2.0.0",  # Used by americano package
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.3.3",
+    "httpx>=0.26.0",
+    "ruff>=0.1.0",
+]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle
+    "F",      # Pyflakes
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "I",      # isort
+    "RUF100"  # Remove unused noqa
+]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 79
+
+[tool.ruff.lint.per-file-ignores]
+"*.ipynb" = ["E501"]  # Disable line length checks for Jupyter notebooks
