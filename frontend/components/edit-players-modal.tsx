@@ -35,6 +35,7 @@ interface EditPlayersModalProps {
   isOpen: boolean;
   onClose: () => void;
   courtSessions: CourtSessionWithPlayers[];
+  restingPlayers: Player[];
   onSwap: (player1Id: number, player2Id: number) => Promise<void>;
 }
 
@@ -42,9 +43,11 @@ export function EditPlayersModal({
   isOpen,
   onClose,
   courtSessions,
+  restingPlayers,
   onSwap,
 }: EditPlayersModalProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerPosition | null>(null);
+  const [selectedRestingPlayer, setSelectedRestingPlayer] = useState<number | null>(null);
   const [isSwapping, setIsSwapping] = useState(false);
 
   // Extract all player positions
@@ -59,14 +62,19 @@ export function EditPlayersModal({
   );
 
   const handlePlayerClick = async (player: PlayerPosition) => {
+    // Clear resting player selection if any
+    if (selectedRestingPlayer) {
+      setSelectedRestingPlayer(null);
+    }
+
     if (!selectedPlayer) {
-      // First click: select player
+      // First click: select playing player
       setSelectedPlayer(player);
     } else if (selectedPlayer.playerId === player.playerId) {
       // Click same player: deselect
       setSelectedPlayer(null);
     } else {
-      // Second click: swap players
+      // Second click: swap two playing players
       setIsSwapping(true);
       try {
         await onSwap(selectedPlayer.playerId, player.playerId);
@@ -79,11 +87,44 @@ export function EditPlayersModal({
     }
   };
 
+  const handleRestingPlayerClick = async (playerId: number) => {
+    if (!selectedPlayer && !selectedRestingPlayer) {
+      // First click: select resting player
+      setSelectedRestingPlayer(playerId);
+    } else if (selectedRestingPlayer === playerId) {
+      // Click same resting player: deselect
+      setSelectedRestingPlayer(null);
+    } else if (selectedPlayer) {
+      // Swap playing player with resting player
+      setIsSwapping(true);
+      try {
+        await onSwap(selectedPlayer.playerId, playerId);
+        setSelectedPlayer(null);
+        setSelectedRestingPlayer(null);
+      } catch (error) {
+        // Error is handled by parent component
+      } finally {
+        setIsSwapping(false);
+      }
+    } else if (selectedRestingPlayer) {
+      // Cannot swap two resting players
+      // Just switch selection
+      setSelectedRestingPlayer(playerId);
+    }
+  };
+
   const isPlayerSelected = (playerId: number) =>
     selectedPlayer?.playerId === playerId;
 
+  const isRestingPlayerSelected = (playerId: number) =>
+    selectedRestingPlayer === playerId;
+
   const isValidSwapTarget = (playerId: number) =>
-    selectedPlayer !== null && selectedPlayer.playerId !== playerId;
+    (selectedPlayer !== null && selectedPlayer.playerId !== playerId) ||
+    selectedRestingPlayer !== null;
+
+  const isValidRestingSwapTarget = (playerId: number) =>
+    selectedPlayer !== null && selectedRestingPlayer !== playerId;
 
   const getPlayersForCourtTeam = (
     courtIndex: number,
@@ -104,9 +145,15 @@ export function EditPlayersModal({
           </DialogTitle>
           <DialogDescription>
             Click a player to select, then click another player to swap positions.
+            You can also swap playing players with resting players.
             {selectedPlayer && (
               <span className="block mt-2 text-primary font-medium">
-                Selected: {selectedPlayer.playerName} - Click another player to swap
+                Selected Playing: {selectedPlayer.playerName} - Click another player to swap
+              </span>
+            )}
+            {selectedRestingPlayer && !selectedPlayer && (
+              <span className="block mt-2 text-primary font-medium">
+                Selected Resting: {restingPlayers.find(p => p.id === selectedRestingPlayer)?.name} - Click a playing player to swap
               </span>
             )}
           </DialogDescription>
@@ -180,6 +227,35 @@ export function EditPlayersModal({
             </Card>
           ))}
         </div>
+
+        {/* Resting Players */}
+        {restingPlayers.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-3">Resting Players (On Bench)</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {restingPlayers.map((player) => (
+                <button
+                  key={player.id}
+                  onClick={() => handleRestingPlayerClick(player.id)}
+                  disabled={isSwapping}
+                  className={`
+                    px-3 py-2 rounded-md text-sm
+                    transition-colors
+                    ${isRestingPlayerSelected(player.id)
+                      ? "bg-primary text-primary-foreground"
+                      : isValidRestingSwapTarget(player.id)
+                      ? "bg-green-50 border-2 border-green-500 hover:bg-green-100"
+                      : "bg-muted hover:bg-muted/80"
+                    }
+                    ${isSwapping ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                  `}
+                >
+                  {player.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSwapping}>

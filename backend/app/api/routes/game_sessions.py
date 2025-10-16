@@ -280,6 +280,23 @@ async def swap_players(
             detail="Cannot swap players after scores have been entered"
         )
     
+    # Verify both players exist in the tournament and are active
+    tournament_id = session["tournament_id"]
+    players_response = (
+        supabase.table("players")
+        .select("*")
+        .eq("tournament_id", tournament_id)
+        .in_("id", [swap_data.player1_id, swap_data.player2_id])
+        .eq("is_active", True)
+        .execute()
+    )
+    
+    if len(players_response.data) != 2:
+        raise HTTPException(
+            status_code=404,
+            detail="One or both players not found or not active in this tournament"
+        )
+    
     # Get court session IDs for this game session
     court_session_ids = [court["id"] for court in courts_response.data]
     
@@ -300,25 +317,55 @@ async def swap_players(
         .execute()
     )
     
-    if not player1_response.data or not player2_response.data:
+    player1_assignment = player1_response.data[0] if player1_response.data else None
+    player2_assignment = player2_response.data[0] if player2_response.data else None
+    
+    # Case 1: Both players are playing - swap their positions
+    if player1_assignment and player2_assignment:
+        supabase.table("court_players").update({
+            "court_session_id": player2_assignment["court_session_id"],
+            "team": player2_assignment["team"],
+        }).eq("id", player1_assignment["id"]).execute()
+        
+        supabase.table("court_players").update({
+            "court_session_id": player1_assignment["court_session_id"],
+            "team": player1_assignment["team"],
+        }).eq("id", player2_assignment["id"]).execute()
+    
+    # Case 2: Player 1 is playing, Player 2 is resting - swap them
+    elif player1_assignment and not player2_assignment:
+        # Create assignment for player 2 (resting -> playing)
+        supabase.table("court_players").insert({
+            "court_session_id": player1_assignment["court_session_id"],
+            "player_id": swap_data.player2_id,
+            "team": player1_assignment["team"],
+        }).execute()
+        
+        # Remove assignment for player 1 (playing -> resting)
+        supabase.table("court_players").delete().eq(
+            "id", player1_assignment["id"]
+        ).execute()
+    
+    # Case 3: Player 2 is playing, Player 1 is resting - swap them
+    elif player2_assignment and not player1_assignment:
+        # Create assignment for player 1 (resting -> playing)
+        supabase.table("court_players").insert({
+            "court_session_id": player2_assignment["court_session_id"],
+            "player_id": swap_data.player1_id,
+            "team": player2_assignment["team"],
+        }).execute()
+        
+        # Remove assignment for player 2 (playing -> resting)
+        supabase.table("court_players").delete().eq(
+            "id", player2_assignment["id"]
+        ).execute()
+    
+    # Case 4: Both players are resting - invalid operation
+    else:
         raise HTTPException(
-            status_code=404,
-            detail="One or both players not found in game session"
+            status_code=400,
+            detail="Cannot swap two resting players"
         )
-    
-    player1_assignment = player1_response.data[0]
-    player2_assignment = player2_response.data[0]
-    
-    # Swap the players by updating court_session_id and team
-    supabase.table("court_players").update({
-        "court_session_id": player2_assignment["court_session_id"],
-        "team": player2_assignment["team"],
-    }).eq("id", player1_assignment["id"]).execute()
-    
-    supabase.table("court_players").update({
-        "court_session_id": player1_assignment["court_session_id"],
-        "team": player1_assignment["team"],
-    }).eq("id", player2_assignment["id"]).execute()
     
     return {"message": "Players swapped successfully"}
 

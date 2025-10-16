@@ -44,6 +44,7 @@ export default function ActiveGameSessionPage() {
   const [courtSessions, setCourtSessions] = useState<
     CourtSessionWithPlayers[]
   >([]);
+  const [restingPlayers, setRestingPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -53,6 +54,7 @@ export default function ActiveGameSessionPage() {
   useEffect(() => {
     fetchGameSession();
     fetchCourtSessions();
+    fetchRestingPlayers();
   }, [sessionId]);
 
   async function fetchGameSession() {
@@ -96,6 +98,44 @@ export default function ActiveGameSessionPage() {
       toast.error("Failed to load courts");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function fetchRestingPlayers() {
+    try {
+      // Get all active players in the tournament
+      const { data: allPlayers, error: playersError } = await supabase
+        .from("players")
+        .select("*")
+        .eq("tournament_id", tournamentId)
+        .eq("is_active", true);
+
+      if (playersError) throw playersError;
+
+      // Get players currently playing in this game session
+      const { data: courtData, error: courtError } = await supabase
+        .from("court_sessions")
+        .select("court_players(player_id)")
+        .eq("game_session_id", sessionId);
+
+      if (courtError) throw courtError;
+
+      // Extract playing player IDs
+      const playingPlayerIds = new Set(
+        courtData.flatMap((court: any) =>
+          court.court_players.map((cp: any) => cp.player_id)
+        )
+      );
+
+      // Filter out playing players to get resting players
+      const resting = (allPlayers || []).filter(
+        (player) => !playingPlayerIds.has(player.id)
+      );
+
+      setRestingPlayers(resting);
+    } catch (error) {
+      console.error("Error fetching resting players:", error);
+      // Don't show error toast, just log - not critical
     }
   }
 
@@ -157,6 +197,7 @@ export default function ActiveGameSessionPage() {
       await swapPlayers(sessionId, player1Id, player2Id);
       toast.success("Players swapped successfully");
       await fetchCourtSessions(); // Refresh court data
+      await fetchRestingPlayers(); // Refresh resting players list
     } catch (error: any) {
       const message = error.message || "Failed to swap players";
       toast.error(message);
@@ -336,6 +377,7 @@ export default function ActiveGameSessionPage() {
             isOpen={isEditModalOpen}
             onClose={() => setIsEditModalOpen(false)}
             courtSessions={courtSessions}
+            restingPlayers={restingPlayers}
             onSwap={handleSwapPlayers}
           />
 
