@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2, ArrowLeftRight } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CourtCard } from "@/components/court-card";
+import { EditPlayersModal } from "@/components/edit-players-modal";
 import { createClient } from "@/lib/supabase";
-import { completeGameSession } from "@/lib/api";
+import { completeGameSession, swapPlayers } from "@/lib/api";
 import { Database } from "@/lib/database.types";
 import { toast } from "sonner";
 
@@ -35,6 +36,7 @@ export default function ActiveGameSessionPage() {
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     fetchGameSession();
@@ -138,6 +140,18 @@ export default function ActiveGameSessionPage() {
     }
   }
 
+  async function handleSwapPlayers(player1Id: number, player2Id: number) {
+    try {
+      await swapPlayers(sessionId, player1Id, player2Id);
+      toast.success("Players swapped successfully");
+      await fetchCourtSessions(); // Refresh court data
+    } catch (error: any) {
+      const message = error.message || "Failed to swap players";
+      toast.error(message);
+      throw error; // Re-throw so modal can handle it
+    }
+  }
+
   function getStatusBadge(status: GameSession["status"]) {
     switch (status) {
       case "pending":
@@ -162,6 +176,10 @@ export default function ActiveGameSessionPage() {
 
   const allScoresEntered = courtSessions.every(
     (court) => court.score_team_a !== null && court.score_team_b !== null
+  );
+
+  const hasAnyScores = courtSessions.some(
+    (court) => court.score_team_a !== null || court.score_team_b !== null
   );
 
   const isCompleted = gameSession?.status === "completed";
@@ -204,6 +222,25 @@ export default function ActiveGameSessionPage() {
         </div>
       ) : (
         <>
+          {!isCompleted && (
+            <div className="mb-4 flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditModalOpen(true)}
+                disabled={hasAnyScores}
+                className="gap-2"
+              >
+                <ArrowLeftRight className="h-4 w-4" />
+                Edit Players
+                {hasAnyScores && (
+                  <Badge variant="secondary" className="ml-2">
+                    Locked
+                  </Badge>
+                )}
+              </Button>
+            </div>
+          )}
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {courtSessions.map((court) => (
               <CourtCard
@@ -217,6 +254,7 @@ export default function ActiveGameSessionPage() {
                   updateCourtScore(court.id, team, score)
                 }
                 disabled={isCompleted}
+                expectedGamePoints={gameSession?.n_game_points}
               />
             ))}
           </div>
@@ -251,6 +289,13 @@ export default function ActiveGameSessionPage() {
               </Link>
             </div>
           )}
+
+          <EditPlayersModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            courtSessions={courtSessions}
+            onSwap={handleSwapPlayers}
+          />
         </>
       )}
     </main>

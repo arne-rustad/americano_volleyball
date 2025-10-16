@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle } from "lucide-react";
 import { Database } from "@/lib/database.types";
 
 type Player = Database["public"]["Tables"]["players"]["Row"];
@@ -13,6 +15,7 @@ interface CourtCardProps {
   scoreTeamB: number | null;
   onScoreChange: (team: "A" | "B", score: number) => void;
   disabled?: boolean;
+  expectedGamePoints?: number | null;
 }
 
 export function CourtCard({
@@ -23,11 +26,52 @@ export function CourtCard({
   scoreTeamB,
   onScoreChange,
   disabled = false,
+  expectedGamePoints,
 }: CourtCardProps) {
+  // Calculate if scores match expected total
+  const bothScoresSet = scoreTeamA !== null && scoreTeamB !== null;
+  const totalScore = bothScoresSet ? (scoreTeamA || 0) + (scoreTeamB || 0) : null;
+  const hasScoreMismatch = 
+    expectedGamePoints && 
+    totalScore !== null && 
+    totalScore !== expectedGamePoints;
+  
+  const handleScoreChange = (team: "A" | "B", value: string) => {
+    const score = Number(value) || 0;
+    onScoreChange(team, score);
+  };
+  
+  const handleScoreBlur = (team: "A" | "B", value: string) => {
+    const score = Number(value) || 0;
+    
+    // Auto-calculate the other team's score if it's not set yet
+    if (expectedGamePoints && score > 0) {
+      if (team === "A" && scoreTeamB === null) {
+        const calculatedScoreB = expectedGamePoints - score;
+        if (calculatedScoreB >= 0) {
+          onScoreChange("B", calculatedScoreB);
+        }
+      } else if (team === "B" && scoreTeamA === null) {
+        const calculatedScoreA = expectedGamePoints - score;
+        if (calculatedScoreA >= 0) {
+          onScoreChange("A", calculatedScoreA);
+        }
+      }
+    }
+  };
+
   return (
-    <Card>
+    <Card className={hasScoreMismatch ? "border-yellow-500 border-2" : ""}>
       <CardHeader>
-        <CardTitle className="text-lg">Court {courtIndex + 1}</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">Court {courtIndex + 1}</CardTitle>
+          {hasScoreMismatch && (
+            <Badge variant="outline" className="gap-1 text-yellow-600 border-yellow-500">
+              <AlertCircle className="h-3 w-3" />
+              Total: {totalScore} / {expectedGamePoints}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Team A */}
@@ -52,9 +96,8 @@ export function CourtCard({
                 type="number"
                 min="0"
                 value={scoreTeamA ?? ""}
-                onChange={(e) =>
-                  onScoreChange("A", Number(e.target.value) || 0)
-                }
+                onChange={(e) => handleScoreChange("A", e.target.value)}
+                onBlur={(e) => handleScoreBlur("A", e.target.value)}
                 placeholder="0"
                 className="text-center text-lg font-bold"
                 disabled={disabled}
@@ -88,9 +131,8 @@ export function CourtCard({
                 type="number"
                 min="0"
                 value={scoreTeamB ?? ""}
-                onChange={(e) =>
-                  onScoreChange("B", Number(e.target.value) || 0)
-                }
+                onChange={(e) => handleScoreChange("B", e.target.value)}
+                onBlur={(e) => handleScoreBlur("B", e.target.value)}
                 placeholder="0"
                 className="text-center text-lg font-bold"
                 disabled={disabled}

@@ -9,6 +9,7 @@ from app.schemas.game_session import (
     GameSessionCreate,
     GameSessionResponse,
     CourtSessionResponse,
+    PlayerSwapRequest,
 )
 
 router = APIRouter()
@@ -231,6 +232,95 @@ async def get_court_sessions(session_id: int):
         result.append(court_data)
 
     return result
+
+
+@router.post("/game-sessions/{session_id}/swap-players")
+async def swap_players(
+    session_id: int,
+    swap_data: PlayerSwapRequest,
+):
+    """Swap two players in a game session.
+    
+    This allows manual adjustment of player assignments after session creation
+    but before any scores are entered.
+    """
+    # Check game session exists and is not completed
+    session_response = (
+        supabase.table("game_sessions")
+        .select("*")
+        .eq("id", session_id)
+        .execute()
+    )
+    if not session_response.data:
+        raise HTTPException(status_code=404, detail="Game session not found")
+    
+    session = session_response.data[0]
+    if session["status"] == "completed":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot swap players in completed game session"
+        )
+    
+    # Check if any scores have been entered
+    courts_response = (
+        supabase.table("court_sessions")
+        .select("*")
+        .eq("game_session_id", session_id)
+        .execute()
+    )
+    
+    has_scores = any(
+        court["score_team_a"] is not None or court["score_team_b"] is not None
+        for court in courts_response.data
+    )
+    
+    if has_scores:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot swap players after scores have been entered"
+        )
+    
+    # Get court session IDs for this game session
+    court_session_ids = [court["id"] for court in courts_response.data]
+    
+    # Get both players' current court assignments IN THIS GAME SESSION
+    player1_response = (
+        supabase.table("court_players")
+        .select("*")
+        .eq("player_id", swap_data.player1_id)
+        .in_("court_session_id", court_session_ids)
+        .execute()
+    )
+    
+    player2_response = (
+        supabase.table("court_players")
+        .select("*")
+        .eq("player_id", swap_data.player2_id)
+        .in_("court_session_id", court_session_ids)
+        .execute()
+    )
+    
+    if not player1_response.data or not player2_response.data:
+        raise HTTPException(
+            status_code=404,
+            detail="One or both players not found in game session"
+        )
+    
+    player1_assignment = player1_response.data[0]
+    player2_assignment = player2_response.data[0]
+    
+    # Swap the players by updating court_session_id and team
+    supabase.table("court_players").update({
+        "court_session_id": player2_assignment["court_session_id"],
+        "team": player2_assignment["team"],
+    }).eq("id", player1_assignment["id"]).execute()
+    
+    supabase.table("court_players").update({
+        "court_session_id": player1_assignment["court_session_id"],
+        "team": player1_assignment["team"],
+    }).eq("id", player2_assignment["id"]).execute()
+    
+    return {"message": "Players swapped successfully"}
 
 
 @router.post(

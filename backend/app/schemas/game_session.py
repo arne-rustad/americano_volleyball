@@ -55,3 +55,10 @@ class CourtSessionResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+
+class PlayerSwapRequest(BaseModel):
+    """Schema for swapping two players."""
+
+    player1_id: int
+    player2_id: int
